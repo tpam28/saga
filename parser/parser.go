@@ -1,5 +1,11 @@
 package parser
 
+import (
+	"fmt"
+
+	"github.com/tpam28/saga/domain"
+)
+
 func NamesFromMap(m []map[string]map[string]interface{}) []string {
 	res := make([]string, len(m))
 	for k, v := range m {
@@ -58,9 +64,7 @@ func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
 	}
 	res := &domain.SemanticLockL{}
 
-	log.Printf("%T", el)
 	hash, ok := el.(map[interface{}]interface{})
-	log.Println(hash)
 	if !ok {
 		return nil, domain.InvalidType
 	}
@@ -97,7 +101,7 @@ func ParseStep(name string, m map[string]map[string]interface{}) (*domain.Step, 
 	if semantic.Rejected == "" {
 		semanticType = domain.Repeat
 	}
-	log.Println(semantic.Rejected, "=>", semanticType)
+
 	return &domain.Step{
 		Name: name,
 		T:    semanticType,
@@ -121,4 +125,3 @@ func ParseConfigSlice(ss []map[string]map[string]interface{}) (domain.StepList, 
 	}
 	return res, nil
 }
-
