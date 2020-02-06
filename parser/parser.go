@@ -1,5 +1,11 @@
 package parser
 
+import (
+	"fmt"
+
+	"github.com/tpam28/saga/domain"
+)
+
 func NamesFromMap(m []map[string]map[string]interface{}) []string {
 	res := make([]string, len(m))
 	for k, v := range m {
@@ -11,37 +17,9 @@ func NamesFromMap(m []map[string]map[string]interface{}) []string {
 	return res
 }
 
-func GetKeys(m map[string]interface{}) (*domain.KeysL, error) {
-	el, ok := m["keys"]
-	if !ok {
-		return nil, domain.KeysNotFoundErr
-	}
-
-	tmp, ok := el.([]interface{})
-	if !ok {
-		return nil, domain.KeysInvalidFormatErr
-	}
-
-	res := make([]string, len(tmp))
-	for i, v := range tmp {
-		res[i] = fmt.Sprint(v)
-	}
-
-	if len(res) == 0 {
-		return nil, domain.ErrNoRows
-	}
-
-	keys := &domain.KeysL{
-		First: res[0],
-	}
-	if len(res) > 1 {
-		keys.Second = res[1]
-	}
-	return keys, nil
-}
 
 func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
-	el, flag1 := m[string(domain.SemanticLock)]
+	el, flag1 := m[string(domain.States)]
 	if !flag1 {
 		return nil, domain.ErrNoRows
 	}
@@ -58,9 +36,7 @@ func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
 	}
 	res := &domain.SemanticLockL{}
 
-	log.Printf("%T", el)
 	hash, ok := el.(map[interface{}]interface{})
-	log.Println(hash)
 	if !ok {
 		return nil, domain.InvalidType
 	}
@@ -85,24 +61,19 @@ func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
 }
 
 func ParseStep(name string, m map[string]map[string]interface{}) (*domain.Step, error) {
-	keys, err := GetKeys(m[name])
-	if err != nil {
-		return nil, err
-	}
 	semantic, err := GetSemantic(m[name])
 	if err != nil {
 		return nil, err
 	}
-	semanticType := domain.Compensatory
+	semanticType := domain.Compensatable
 	if semantic.Rejected == "" {
-		semanticType = domain.Repeat
+		semanticType = domain.Retriable
 	}
-	log.Println(semantic.Rejected, "=>", semanticType)
+
 	return &domain.Step{
 		Name: name,
 		T:    semanticType,
 		Sl:   *semantic,
-		Keys: *keys,
 	}, nil
 }
 
@@ -121,4 +92,3 @@ func ParseConfigSlice(ss []map[string]map[string]interface{}) (domain.StepList, 
 	}
 	return res, nil
 }
-

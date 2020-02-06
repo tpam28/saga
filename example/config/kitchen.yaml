@@ -1,0 +1,24 @@
+milestone:
+  - verify_consumer:
+      states:
+        pending: begin_verify
+        approval: checked
+        rejected: failed
+  - create_ticket:
+      states:
+        pending: begin_check
+        approval: verifed
+        rejected: failed
+  - verify_card:
+      states:
+        pending: begin_verify
+        approval: verifed
+        rejected: failed
+  - confirm_ticket:
+      states:
+        pending: start
+        approval: confirm
+  - confirm_order:
+      states:
+        pending: start
+        approval: confirm
