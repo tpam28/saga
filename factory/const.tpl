@@ -107,8 +107,16 @@ type {{.Name | camelcase}}Receiver struct{
     b broker.Broker
 }
 
-func (r *{{.Name | camelcase}}Receiver(f func(broker.Event) {
+func (r *{{.Name | camelcase}}Receiver) Approval(f func(Event)) (broker.Subscriber, error){
+    return r.b.Subscribe({{.Name}}.approval, func(event broker.Event) error {
+        f()
+    })
 }
+
+func (r *{{.Name | camelcase}}Receiver) Rejected(f func(Event)) (broker.Subscriber, error){
+    return r.b.Subscribe({{.Name}}.rejected)
+}
+
 func New{{.Name | camelcase}}Receiver(b broker.Broker) *{{.Name | camelcase}}Receiver{
     return &{{.Name | camelcase}}Receiver{b:b}
 }

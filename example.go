@@ -296,7 +296,10 @@ type ConfirmOrderReceiver struct{
     b broker.Broker
 }
 
-func (r *ConfirmOrderReceiver(f func(broker.Event) {
+func (r *ConfirmOrderReceiver) Do(f func(broker.Event)) (broker.Subscriber, error) {
+    r.b.Subscribe("", func(event broker.Event) error {
+        
+    })
 }
 func NewConfirmOrderReceiver(b broker.Broker) *ConfirmOrderReceiver{
     return &ConfirmOrderReceiver{b:b}
