@@ -3,12 +3,48 @@ package main
 
 import (
     "encoding/json"
+    "errors"
 
     "github.com/micro/go-micro/v2/broker"
 )
 
+type Event struct{
+    broker.Event
+}
 //TODO chacnge
-const orkestratorRoutingKey = "milestone.orkestrator"
+const orchestratorRoutingKey = "milestone.orchestrator"
+var ErrMethodNotAvailable = errors.New("method not available")
+
+type EventTransmitter struct{
+    t Transmitter
+    id string
+}
+
+func (e *EventTransmitter)Pending() error {
+    return e.t.Pending(e.id)
+}
+
+func (e *EventTransmitter)Approval() error {
+    return e.t.Approval(e.id)
+}
+
+func (e *EventTransmitter)Rejected() error {
+    return e.t.Rejected(e.id)
+}
+
+type Transmitter interface{
+    Pending(id string) error
+    Approval(id string) error
+    Rejected(id string) error
+}
+
+
+type steps string
+const(
+{{range .}}
+    {{.Name}} steps = "{{.Name}}"
+{{end}}
+)
 
 {{range .}}
 type {{.Name  | camelcase}} string
@@ -29,13 +65,15 @@ func (t {{.Name  | camelcase}}) Is () bool{
 {{end}}
 
 type Message struct{
-    id      string `json:"id"`
-    command string `json:"command"`
+    ID          string `json:"id"`
+    Command     string `json:"command"`
+    StepName    string `json:"step_name"`
 }
+
 func MessageByte(id string, command string) []byte {
     m := &Message{
-        id:id,
-        command:command,
+        ID:id,
+        Command:command,
     }
     b, _ :=json.Marshal(m)
     return b
@@ -45,21 +83,22 @@ func MessageByte(id string, command string) []byte {
 type {{.Name | camelcase}}Transmitter struct{
     b broker.Broker
 }
-func (t *{{.Name | camelcase}}Transmitter){{.Sl.Pending | camelcase}}(id string) error{
+func (t *{{.Name | camelcase}}Transmitter)Pending(id string) error {
     body := &broker.Message{Body:MessageByte(id, string({{.Sl.Pending | camelcase}}{{.Name  | camelcase}}))}
-    return t.b.Publish(orkestratorRoutingKey, body)
+    return t.b.Publish(orchestratorRoutingKey, body)
 }
 
-func (t *{{.Name | camelcase}}Transmitter){{.Sl.Approval | camelcase}}(id string) error{
+func (t *{{.Name | camelcase}}Transmitter)Approval(id string) error {
     body := &broker.Message{Body:MessageByte(id, string({{.Sl.Approval | camelcase}}{{.Name  | camelcase}}))}
-    return t.b.Publish(orkestratorRoutingKey,  body)
+    return t.b.Publish(orchestratorRoutingKey,  body)
 }
-{{if ne .Sl.Rejected ""}}
-func (t *{{.Name | camelcase}}Transmitter){{.Sl.Rejected | camelcase}}(id string) error{
-    body := &broker.Message{Body:MessageByte(id, string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}))}
-    return t.b.Publish(orkestratorRoutingKey, body)
-}
-{{end}}
+
+func (t *{{.Name | camelcase}}Transmitter)Rejected(id string) error {
+{{if ne .Sl.Rejected ""}}body := &broker.Message{Body:MessageByte(id, string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}))}
+    return t.b.Publish(orchestratorRoutingKey, body)
+{{else}}    return ErrMethodNotAvailable
+{{end}}}
+
 func New{{.Name | camelcase}}Transmitter(b broker.Broker) *{{.Name | camelcase}}Transmitter{
     return &{{.Name | camelcase}}Transmitter{b:b}
 }
@@ -68,7 +107,59 @@ type {{.Name | camelcase}}Receiver struct{
     b broker.Broker
 }
 
+func (r *{{.Name | camelcase}}Receiver(f func(broker.Event) {
+}
 func New{{.Name | camelcase}}Receiver(b broker.Broker) *{{.Name | camelcase}}Receiver{
     return &{{.Name | camelcase}}Receiver{b:b}
 }
 {{end}}
+
+type Orchestrator struct {
+    b broker.Broker
+}
+
+func (o *Orchestrator) Do(options ...broker.SubscribeOption) (broker.Subscriber, error) {
+    return o.b.Subscribe(orchestratorRoutingKey, o.handler, options...)
+}
+
+func (o *Orchestrator) handler(e broker.Event) error {
+    m := Message{}
+    err := json.Unmarshal(e.Message().Body,&m)
+    //it mustn't ever happens
+    if err != nil{
+        panic(err)
+    }
+
+    switch steps(m.StepName){
+        {{range . }}case {{.Name}}:
+            return o.{{.Name}}Route(e.Message(), {{.Name | camelcase}}(m.Command))
+        {{end}}
+    }
+    return nil
+}
+
+{{range . }}
+func (o *Orchestrator){{.Name}}Route(m *broker.Message, typeOf {{.Name  | camelcase}}) error {
+    if  !typeOf.Is() {
+        return errors.New("invalid type of")
+    }
+    switch typeOf{
+        case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
+            return o.b.Publish("{{.Name}}.pending", m, nil)
+        case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
+            return o.b.Publish("{{.Name}}.approval", m, nil)
+        {{if ne .Sl.Rejected ""}}
+        case {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}:
+            return o.b.Publish("{{.Name}}.rejected", m, nil)
+            {{end}}
+        default:
+            panic(typeOf)
+    }
+}
+{{end}}
+
+//TODO will add handler if it need
+//type OrchestratorHandler func(event broker.Event)
+//func AddHandler(h OrchestratorHandler) {
+//
+//}
