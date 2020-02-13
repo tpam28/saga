@@ -1,4 +1,4 @@
-//DO NOT EDIT
+//Automatically generated file; DO NOT EDIT
 package main
 
 import (
@@ -8,9 +8,6 @@ import (
     "github.com/micro/go-micro/v2/broker"
 )
 
-type Event struct{
-    broker.Event
-}
 //TODO chacnge
 const orchestratorRoutingKey = "milestone.orchestrator"
 var ErrMethodNotAvailable = errors.New("method not available")
@@ -18,10 +15,7 @@ var ErrMethodNotAvailable = errors.New("method not available")
 type EventTransmitter struct{
     t Transmitter
     id string
-}
-
-func (e *EventTransmitter)Pending() error {
-    return e.t.Pending(e.id)
+    broker.Event
 }
 
 func (e *EventTransmitter)Approval() error {
@@ -33,7 +27,6 @@ func (e *EventTransmitter)Rejected() error {
 }
 
 type Transmitter interface{
-    Pending(id string) error
     Approval(id string) error
     Rejected(id string) error
 }
@@ -41,15 +34,10 @@ type Transmitter interface{
 
 type steps string
 const(
-
     verify_consumer steps = "verify_consumer"
-
     create_ticket steps = "create_ticket"
-
     verify_card steps = "verify_card"
-
     confirm_ticket steps = "confirm_ticket"
-
     confirm_order steps = "confirm_order"
 
 )
@@ -132,6 +120,8 @@ type Message struct{
     ID          string `json:"id"`
     Command     string `json:"command"`
     StepName    string `json:"step_name"`
+    //If it need we can add payload to message.
+    Payload     []byte `json:'payload"`
 }
 
 func MessageByte(id string, command string) []byte {
@@ -168,10 +158,40 @@ func NewVerifyConsumerTransmitter(b broker.Broker) *VerifyConsumerTransmitter{
 
 type VerifyConsumerReceiver struct{
     b broker.Broker
+    t Transmitter
 }
 
-func (r *VerifyConsumerReceiver(f func(broker.Event) {
+func (r *VerifyConsumerReceiver) Pending(f func(EventTransmitter) error) (broker.Subscriber, error){
+    return r.b.Subscribe("verify_consumer_approval", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
 }
+
+func (r *VerifyConsumerReceiver) Rejected(f func(EventTransmitter)error) (broker.Subscriber, error){
+    return r.b.Subscribe("verify_consumer_rejected", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
+
+}
+
 func NewVerifyConsumerReceiver(b broker.Broker) *VerifyConsumerReceiver{
     return &VerifyConsumerReceiver{b:b}
 }
@@ -200,10 +220,40 @@ func NewCreateTicketTransmitter(b broker.Broker) *CreateTicketTransmitter{
 
 type CreateTicketReceiver struct{
     b broker.Broker
+    t Transmitter
 }
 
-func (r *CreateTicketReceiver(f func(broker.Event) {
+func (r *CreateTicketReceiver) Pending(f func(EventTransmitter) error) (broker.Subscriber, error){
+    return r.b.Subscribe("create_ticket_approval", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
 }
+
+func (r *CreateTicketReceiver) Rejected(f func(EventTransmitter)error) (broker.Subscriber, error){
+    return r.b.Subscribe("create_ticket_rejected", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
+
+}
+
 func NewCreateTicketReceiver(b broker.Broker) *CreateTicketReceiver{
     return &CreateTicketReceiver{b:b}
 }
@@ -232,10 +282,40 @@ func NewVerifyCardTransmitter(b broker.Broker) *VerifyCardTransmitter{
 
 type VerifyCardReceiver struct{
     b broker.Broker
+    t Transmitter
 }
 
-func (r *VerifyCardReceiver(f func(broker.Event) {
+func (r *VerifyCardReceiver) Pending(f func(EventTransmitter) error) (broker.Subscriber, error){
+    return r.b.Subscribe("verify_card_approval", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
 }
+
+func (r *VerifyCardReceiver) Rejected(f func(EventTransmitter)error) (broker.Subscriber, error){
+    return r.b.Subscribe("verify_card_rejected", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
+
+}
+
 func NewVerifyCardReceiver(b broker.Broker) *VerifyCardReceiver{
     return &VerifyCardReceiver{b:b}
 }
@@ -263,10 +343,40 @@ func NewConfirmTicketTransmitter(b broker.Broker) *ConfirmTicketTransmitter{
 
 type ConfirmTicketReceiver struct{
     b broker.Broker
+    t Transmitter
 }
 
-func (r *ConfirmTicketReceiver(f func(broker.Event) {
+func (r *ConfirmTicketReceiver) Pending(f func(EventTransmitter) error) (broker.Subscriber, error){
+    return r.b.Subscribe("confirm_ticket_approval", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
 }
+
+func (r *ConfirmTicketReceiver) Rejected(f func(EventTransmitter)error) (broker.Subscriber, error){
+    return r.b.Subscribe("confirm_ticket_rejected", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
+
+}
+
 func NewConfirmTicketReceiver(b broker.Broker) *ConfirmTicketReceiver{
     return &ConfirmTicketReceiver{b:b}
 }
@@ -294,13 +404,40 @@ func NewConfirmOrderTransmitter(b broker.Broker) *ConfirmOrderTransmitter{
 
 type ConfirmOrderReceiver struct{
     b broker.Broker
+    t Transmitter
 }
 
-func (r *ConfirmOrderReceiver) Do(f func(broker.Event)) (broker.Subscriber, error) {
-    r.b.Subscribe("", func(event broker.Event) error {
-        
+func (r *ConfirmOrderReceiver) Pending(f func(EventTransmitter) error) (broker.Subscriber, error){
+    return r.b.Subscribe("confirm_order_approval", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
     })
 }
+
+func (r *ConfirmOrderReceiver) Rejected(f func(EventTransmitter)error) (broker.Subscriber, error){
+    return r.b.Subscribe("confirm_order_rejected", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
+
+}
+
 func NewConfirmOrderReceiver(b broker.Broker) *ConfirmOrderReceiver{
     return &ConfirmOrderReceiver{b:b}
 }
@@ -308,6 +445,8 @@ func NewConfirmOrderReceiver(b broker.Broker) *ConfirmOrderReceiver{
 
 type Orchestrator struct {
     b broker.Broker
+    //TODO add callback for bad transaction for example: use this if we reject transaction witch has rejected.
+    //TODO use micro logger interface
 }
 
 func (o *Orchestrator) Do(options ...broker.SubscribeOption) (broker.Subscriber, error) {

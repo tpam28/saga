@@ -1,4 +1,4 @@
-//DO NOT EDIT
+//Automatically generated file; DO NOT EDIT
 package main
 
 import (
@@ -8,9 +8,6 @@ import (
     "github.com/micro/go-micro/v2/broker"
 )
 
-type Event struct{
-    broker.Event
-}
 //TODO chacnge
 const orchestratorRoutingKey = "milestone.orchestrator"
 var ErrMethodNotAvailable = errors.New("method not available")
@@ -18,10 +15,7 @@ var ErrMethodNotAvailable = errors.New("method not available")
 type EventTransmitter struct{
     t Transmitter
     id string
-}
-
-func (e *EventTransmitter)Pending() error {
-    return e.t.Pending(e.id)
+    broker.Event
 }
 
 func (e *EventTransmitter)Approval() error {
@@ -33,7 +27,6 @@ func (e *EventTransmitter)Rejected() error {
 }
 
 type Transmitter interface{
-    Pending(id string) error
     Approval(id string) error
     Rejected(id string) error
 }
@@ -41,8 +34,7 @@ type Transmitter interface{
 
 type steps string
 const(
-{{range .}}
-    {{.Name}} steps = "{{.Name}}"
+{{range .}}    {{.Name}} steps = "{{.Name}}"
 {{end}}
 )
 
@@ -68,6 +60,8 @@ type Message struct{
     ID          string `json:"id"`
     Command     string `json:"command"`
     StepName    string `json:"step_name"`
+    //If it need we can add payload to message.
+    Payload     []byte `json:'payload"`
 }
 
 func MessageByte(id string, command string) []byte {
@@ -105,16 +99,38 @@ func New{{.Name | camelcase}}Transmitter(b broker.Broker) *{{.Name | camelcase}}
 
 type {{.Name | camelcase}}Receiver struct{
     b broker.Broker
+    t Transmitter
 }
 
-func (r *{{.Name | camelcase}}Receiver) Approval(f func(Event)) (broker.Subscriber, error){
-    return r.b.Subscribe({{.Name}}.approval, func(event broker.Event) error {
-        f()
+func (r *{{.Name | camelcase}}Receiver) Pending(f func(EventTransmitter) error) (broker.Subscriber, error){
+    return r.b.Subscribe("{{.Name}}_approval", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
     })
 }
 
-func (r *{{.Name | camelcase}}Receiver) Rejected(f func(Event)) (broker.Subscriber, error){
-    return r.b.Subscribe({{.Name}}.rejected)
+func (r *{{.Name | camelcase}}Receiver) Rejected(f func(EventTransmitter)error) (broker.Subscriber, error){
+    return r.b.Subscribe("{{.Name}}_rejected", func(event broker.Event) error {
+        m := Message{}
+        err := json.Unmarshal(event.Message().Body, &m)
+        if err != nil {
+            panic(err)
+        }
+        return f(EventTransmitter{
+            t: r.t,
+            id:m.ID,
+            Event: event,
+        })
+    })
+
 }
 
 func New{{.Name | camelcase}}Receiver(b broker.Broker) *{{.Name | camelcase}}Receiver{
@@ -124,6 +140,8 @@ func New{{.Name | camelcase}}Receiver(b broker.Broker) *{{.Name | camelcase}}Rec
 
 type Orchestrator struct {
     b broker.Broker
+    //TODO add callback for bad transaction for example: use this if we reject transaction witch has rejected.
+    //TODO use micro logger interface
 }
 
 func (o *Orchestrator) Do(options ...broker.SubscribeOption) (broker.Subscriber, error) {
