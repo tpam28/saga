@@ -12,9 +12,16 @@ import (
 const orchestratorRoutingKey = "milestone.orchestrator"
 var ErrMethodNotAvailable = errors.New("method not available")
 
+type direction int
+const(
+    Up direction = iota
+    Down
+)
+
 type EventTransmitter struct{
     t Transmitter
     id string
+    direction
     broker.Event
 }
 
@@ -88,7 +95,7 @@ func (t *{{.Name | camelcase}}Transmitter)Approval(id string) error {
 }
 
 func (t *{{.Name | camelcase}}Transmitter)Rejected(id string) error {
-{{if ne .Sl.Rejected ""}}body := &broker.Message{Body:MessageByte(id, string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}))}
+{{if ne .Sl.Rejected ""}}   body := &broker.Message{Body:MessageByte(id, string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}))}
     return t.b.Publish(orchestratorRoutingKey, body)
 {{else}}    return ErrMethodNotAvailable
 {{end}}}
@@ -158,28 +165,44 @@ func (o *Orchestrator) handler(e broker.Event) error {
 
     switch steps(m.StepName){
         {{range . }}case {{.Name}}:
-            return o.{{.Name}}Route(e.Message(), {{.Name | camelcase}}(m.Command))
+            return o.{{.Name}}Route(e.Message(), {{.Name | camelcase}}(m.Command), Direction)
         {{end}}
     }
     return nil
 }
 
 {{range . }}
-func (o *Orchestrator){{.Name}}Route(m *broker.Message, typeOf {{.Name  | camelcase}}) error {
+func (o *Orchestrator){{.Name}}Route(m *broker.Message, typeOf {{.Name  | camelcase}}, direction direction) error {
     if  !typeOf.Is() {
-        return errors.New("invalid type of")
+        return errors.New("invalid typeOf")
     }
-    switch typeOf{
-        case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
-            return o.b.Publish("{{.Name}}.pending", m, nil)
-        case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
-            return o.b.Publish("{{.Name}}.approval", m, nil)
-        {{if ne .Sl.Rejected ""}}
-        case {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}:
-            return o.b.Publish("{{.Name}}.rejected", m, nil)
-            {{end}}
-        default:
-            panic(typeOf)
+    switch direction{
+        case Up:
+            switch typeOf{
+                case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
+        //            return o.b.Publish("{{.Name}}.pending", m, nil)
+                    return nil
+                case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
+                {{if .Next}}    return o.b.Publish("{{.Next.Name}}.pending", m, nil){{else}}    return nil{{end}}
+                {{if ne .Sl.Rejected ""}}
+                case {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}:
+                    return o.b.Publish("{{.Name}}.rejected", m, nil){{end}}
+                default:
+                    panic(typeOf)
+            }
+        case Down:
+            switch typeOf{
+                case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
+                //            return o.b.Publish("{{.Name}}.pending", m, nil)
+                return nil
+                case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
+                {{if .Next}}    return o.b.Publish("{{.Next.Name}}.pending", m, nil){{else}}    return nil{{end}}
+                {{if ne .Sl.Rejected ""}}
+                    case {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}:
+                    return o.b.Publish("{{.Name}}.rejected", m, nil){{end}}
+                default:
+                    panic(typeOf)
+            }
     }
 }
 {{end}}

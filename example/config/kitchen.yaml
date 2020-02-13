@@ -37,11 +37,3 @@ milestone:
       semanticLock:
         pending: start
         approval: confirm
-
-#build:
-#  authEnvName: RABBITMQ_DSN
-#  authEnvExhange: RABBITMQ_EXCHANGE_NAME
-  #need queue is persistence? recommend to use true
-#  persistence: true
-  #as in go-micro
-#  broker: rabbitmq

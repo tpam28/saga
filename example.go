@@ -12,9 +12,16 @@ import (
 const orchestratorRoutingKey = "milestone.orchestrator"
 var ErrMethodNotAvailable = errors.New("method not available")
 
+type direction int
+const(
+    Up direction = iota
+    Down
+)
+
 type EventTransmitter struct{
     t Transmitter
     id string
+    direction
     broker.Event
 }
 
@@ -148,7 +155,7 @@ func (t *VerifyConsumerTransmitter)Approval(id string) error {
 }
 
 func (t *VerifyConsumerTransmitter)Rejected(id string) error {
-body := &broker.Message{Body:MessageByte(id, string(FailedVerifyConsumer))}
+   body := &broker.Message{Body:MessageByte(id, string(FailedVerifyConsumer))}
     return t.b.Publish(orchestratorRoutingKey, body)
 }
 
@@ -210,7 +217,7 @@ func (t *CreateTicketTransmitter)Approval(id string) error {
 }
 
 func (t *CreateTicketTransmitter)Rejected(id string) error {
-body := &broker.Message{Body:MessageByte(id, string(FailedCreateTicket))}
+   body := &broker.Message{Body:MessageByte(id, string(FailedCreateTicket))}
     return t.b.Publish(orchestratorRoutingKey, body)
 }
 
@@ -272,7 +279,7 @@ func (t *VerifyCardTransmitter)Approval(id string) error {
 }
 
 func (t *VerifyCardTransmitter)Rejected(id string) error {
-body := &broker.Message{Body:MessageByte(id, string(FailedVerifyCard))}
+   body := &broker.Message{Body:MessageByte(id, string(FailedVerifyCard))}
     return t.b.Publish(orchestratorRoutingKey, body)
 }
 
@@ -463,102 +470,180 @@ func (o *Orchestrator) handler(e broker.Event) error {
 
     switch steps(m.StepName){
         case verify_consumer:
-            return o.verify_consumerRoute(e.Message(), VerifyConsumer(m.Command))
+            return o.verify_consumerRoute(e.Message(), VerifyConsumer(m.Command), Direction)
         case create_ticket:
-            return o.create_ticketRoute(e.Message(), CreateTicket(m.Command))
+            return o.create_ticketRoute(e.Message(), CreateTicket(m.Command), Direction)
         case verify_card:
-            return o.verify_cardRoute(e.Message(), VerifyCard(m.Command))
+            return o.verify_cardRoute(e.Message(), VerifyCard(m.Command), Direction)
         case confirm_ticket:
-            return o.confirm_ticketRoute(e.Message(), ConfirmTicket(m.Command))
+            return o.confirm_ticketRoute(e.Message(), ConfirmTicket(m.Command), Direction)
         case confirm_order:
-            return o.confirm_orderRoute(e.Message(), ConfirmOrder(m.Command))
+            return o.confirm_orderRoute(e.Message(), ConfirmOrder(m.Command), Direction)
         
     }
     return nil
 }
 
 
-func (o *Orchestrator)verify_consumerRoute(m *broker.Message, typeOf VerifyConsumer) error {
+func (o *Orchestrator)verify_consumerRoute(m *broker.Message, typeOf VerifyConsumer, direction direction) error {
     if  !typeOf.Is() {
-        return errors.New("invalid type of")
+        return errors.New("invalid typeOf")
     }
-    switch typeOf{
-        case StartcheckVerifyConsumer:
-            return o.b.Publish("verify_consumer.pending", m, nil)
-        case CheckedVerifyConsumer:
-            return o.b.Publish("verify_consumer.approval", m, nil)
-        
-        case FailedVerifyConsumer:
-            return o.b.Publish("verify_consumer.rejected", m, nil)
-            
-        default:
-            panic(typeOf)
+    switch direction{
+        case Up:
+            switch typeOf{
+                case StartcheckVerifyConsumer:
+        //            return o.b.Publish("verify_consumer.pending", m, nil)
+                    return nil
+                case CheckedVerifyConsumer:
+                    return o.b.Publish("create_ticket.pending", m, nil)
+                
+                case FailedVerifyConsumer:
+                    return o.b.Publish("verify_consumer.rejected", m, nil)
+                default:
+                    panic(typeOf)
+            }
+        case Down:
+            switch typeOf{
+                case StartcheckVerifyConsumer:
+                //            return o.b.Publish("verify_consumer.pending", m, nil)
+                return nil
+                case CheckedVerifyConsumer:
+                    return o.b.Publish("create_ticket.pending", m, nil)
+                
+                    case FailedVerifyConsumer:
+                    return o.b.Publish("verify_consumer.rejected", m, nil)
+                default:
+                    panic(typeOf)
+            }
     }
 }
 
-func (o *Orchestrator)create_ticketRoute(m *broker.Message, typeOf CreateTicket) error {
+func (o *Orchestrator)create_ticketRoute(m *broker.Message, typeOf CreateTicket, direction direction) error {
     if  !typeOf.Is() {
-        return errors.New("invalid type of")
+        return errors.New("invalid typeOf")
     }
-    switch typeOf{
-        case StartcheckCreateTicket:
-            return o.b.Publish("create_ticket.pending", m, nil)
-        case CheckedCreateTicket:
-            return o.b.Publish("create_ticket.approval", m, nil)
-        
-        case FailedCreateTicket:
-            return o.b.Publish("create_ticket.rejected", m, nil)
-            
-        default:
-            panic(typeOf)
+    switch direction{
+        case Up:
+            switch typeOf{
+                case StartcheckCreateTicket:
+        //            return o.b.Publish("create_ticket.pending", m, nil)
+                    return nil
+                case CheckedCreateTicket:
+                    return o.b.Publish("verify_card.pending", m, nil)
+                
+                case FailedCreateTicket:
+                    return o.b.Publish("create_ticket.rejected", m, nil)
+                default:
+                    panic(typeOf)
+            }
+        case Down:
+            switch typeOf{
+                case StartcheckCreateTicket:
+                //            return o.b.Publish("create_ticket.pending", m, nil)
+                return nil
+                case CheckedCreateTicket:
+                    return o.b.Publish("verify_card.pending", m, nil)
+                
+                    case FailedCreateTicket:
+                    return o.b.Publish("create_ticket.rejected", m, nil)
+                default:
+                    panic(typeOf)
+            }
     }
 }
 
-func (o *Orchestrator)verify_cardRoute(m *broker.Message, typeOf VerifyCard) error {
+func (o *Orchestrator)verify_cardRoute(m *broker.Message, typeOf VerifyCard, direction direction) error {
     if  !typeOf.Is() {
-        return errors.New("invalid type of")
+        return errors.New("invalid typeOf")
     }
-    switch typeOf{
-        case StartcheckVerifyCard:
-            return o.b.Publish("verify_card.pending", m, nil)
-        case CheckedVerifyCard:
-            return o.b.Publish("verify_card.approval", m, nil)
-        
-        case FailedVerifyCard:
-            return o.b.Publish("verify_card.rejected", m, nil)
-            
-        default:
-            panic(typeOf)
+    switch direction{
+        case Up:
+            switch typeOf{
+                case StartcheckVerifyCard:
+        //            return o.b.Publish("verify_card.pending", m, nil)
+                    return nil
+                case CheckedVerifyCard:
+                    return o.b.Publish("confirm_ticket.pending", m, nil)
+                
+                case FailedVerifyCard:
+                    return o.b.Publish("verify_card.rejected", m, nil)
+                default:
+                    panic(typeOf)
+            }
+        case Down:
+            switch typeOf{
+                case StartcheckVerifyCard:
+                //            return o.b.Publish("verify_card.pending", m, nil)
+                return nil
+                case CheckedVerifyCard:
+                    return o.b.Publish("confirm_ticket.pending", m, nil)
+                
+                    case FailedVerifyCard:
+                    return o.b.Publish("verify_card.rejected", m, nil)
+                default:
+                    panic(typeOf)
+            }
     }
 }
 
-func (o *Orchestrator)confirm_ticketRoute(m *broker.Message, typeOf ConfirmTicket) error {
+func (o *Orchestrator)confirm_ticketRoute(m *broker.Message, typeOf ConfirmTicket, direction direction) error {
     if  !typeOf.Is() {
-        return errors.New("invalid type of")
+        return errors.New("invalid typeOf")
     }
-    switch typeOf{
-        case StartConfirmTicket:
-            return o.b.Publish("confirm_ticket.pending", m, nil)
-        case ConfirmConfirmTicket:
-            return o.b.Publish("confirm_ticket.approval", m, nil)
-        
-        default:
-            panic(typeOf)
+    switch direction{
+        case Up:
+            switch typeOf{
+                case StartConfirmTicket:
+        //            return o.b.Publish("confirm_ticket.pending", m, nil)
+                    return nil
+                case ConfirmConfirmTicket:
+                    return o.b.Publish("confirm_order.pending", m, nil)
+                
+                default:
+                    panic(typeOf)
+            }
+        case Down:
+            switch typeOf{
+                case StartConfirmTicket:
+                //            return o.b.Publish("confirm_ticket.pending", m, nil)
+                return nil
+                case ConfirmConfirmTicket:
+                    return o.b.Publish("confirm_order.pending", m, nil)
+                
+                default:
+                    panic(typeOf)
+            }
     }
 }
 
-func (o *Orchestrator)confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder) error {
+func (o *Orchestrator)confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder, direction direction) error {
     if  !typeOf.Is() {
-        return errors.New("invalid type of")
+        return errors.New("invalid typeOf")
     }
-    switch typeOf{
-        case StartConfirmOrder:
-            return o.b.Publish("confirm_order.pending", m, nil)
-        case ConfirmConfirmOrder:
-            return o.b.Publish("confirm_order.approval", m, nil)
-        
-        default:
-            panic(typeOf)
+    switch direction{
+        case Up:
+            switch typeOf{
+                case StartConfirmOrder:
+        //            return o.b.Publish("confirm_order.pending", m, nil)
+                    return nil
+                case ConfirmConfirmOrder:
+                    return nil
+                
+                default:
+                    panic(typeOf)
+            }
+        case Down:
+            switch typeOf{
+                case StartConfirmOrder:
+                //            return o.b.Publish("confirm_order.pending", m, nil)
+                return nil
+                case ConfirmConfirmOrder:
+                    return nil
+                
+                default:
+                    panic(typeOf)
+            }
     }
 }
 
