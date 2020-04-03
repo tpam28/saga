@@ -10,9 +10,9 @@ const (
 type TransactionType string
 
 const (
-	Compensatory TransactionType = "compensatory"
-	Critical     TransactionType = "critical"
-	Repeat       TransactionType = "repeat"
+	Compensatable TransactionType = "compensatable"
+	Pivot         TransactionType = "pivot"
+	Retriable     TransactionType = "retriable"
 )
 
 type Options string

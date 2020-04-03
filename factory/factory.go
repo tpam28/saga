@@ -25,12 +25,12 @@ var fns = template.FuncMap{
 }
 
 type Factory struct {
-	domain.StepList
+	domain.StateList
 	PathFile    string
 	PackageName string
 }
 
-func (f *Factory) Do(list domain.StepList) {
+func (f *Factory) Do(list domain.StateList) {
 	t := template.New("const.tpl")
 	t = t.Funcs(sprig.FuncMap())
 	t, err := t.ParseFiles("factory/const.tpl")

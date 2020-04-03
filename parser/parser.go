@@ -88,7 +88,7 @@ func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
 	return res, nil
 }
 
-func ParseStep(name string, m map[string]map[string]interface{}) (*domain.Step, error) {
+func ParseState(name string, m map[string]map[string]interface{}) (*domain.State, error) {
 	keys, err := GetKeys(m[name])
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func ParseStep(name string, m map[string]map[string]interface{}) (*domain.Step, 
 		semanticType = domain.Repeat
 	}
 
-	return &domain.Step{
+	return &domain.State{
 		Name: name,
 		T:    semanticType,
 		Sl:   *semantic,
@@ -110,11 +110,11 @@ func ParseStep(name string, m map[string]map[string]interface{}) (*domain.Step, 
 	}, nil
 }
 
-func ParseConfigSlice(ss []map[string]map[string]interface{}) (domain.StepList, error) {
-	res := domain.StepList{}
+func ParseConfigSlice(ss []map[string]map[string]interface{}) (domain.StateList, error) {
+	res := domain.StateList{}
 	names := NamesFromMap(ss)
 	for i, s := range ss {
-		step, err := ParseStep(names[i], s)
+		step, err := ParseState(names[i], s)
 		if err != nil {
 			return nil, err
 		}

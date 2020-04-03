@@ -1,8 +1,8 @@
 package domain
 
-type StepList []Step
+type StateList []State
 
-func (s *StepList) Push(step Step) error {
+func (s *StateList) Push(step State) error {
 	prev := len(*s)-1
 	tmp := *s
 
@@ -13,13 +13,13 @@ func (s *StepList) Push(step Step) error {
 
 	if len(*s) > 1 {
 		//Returns err if sequence is invalid.
-		if tmp[prev].T == Repeat && step.T != Repeat {
+		if tmp[prev].T == Retriable && step.T != Retriable {
 			return SequenceErr
 		}
 		//Change type to Critical if list of repeated tx is started.
-		if tmp[prev].T == Compensatory {
-			if step.T == Repeat {
-				tmp[len(*s)-1].T = Critical
+		if tmp[prev].T == Compensatable {
+			if step.T == Retriable {
+				tmp[len(*s)-1].T = Pivot
 			}
 		}
 
@@ -29,13 +29,13 @@ func (s *StepList) Push(step Step) error {
 	return nil
 }
 
-type Step struct {
+type State struct {
 	Name string
 	T    TransactionType
 	Sl   SemanticLockL
 	Keys KeysL
-	Prev *Step
-	Next *Step
+	Prev *State
+	Next *State
 }
 
 type SemanticLockL struct {
