@@ -6,6 +6,7 @@ import (
     "errors"
 
     "github.com/micro/go-micro/v2/broker"
+    "github.com/micro/go-micro/v2/logger"
 )
 
 //TODO chacnge
@@ -17,6 +18,10 @@ const(
     Up direction = iota
     Down
 )
+
+func (d direction)Is() bool{
+    return d == Up || d == Down
+}
 
 type EventTransmitter struct{
     t Transmitter
@@ -75,14 +80,14 @@ type ConfirmTicket string
 const(
     StartConfirmTicket ConfirmTicket = "start"
     ConfirmConfirmTicket ConfirmTicket = "confirm"
-    
+    errRejectedConfirmTicket ConfirmTicket = "errRejected"
 )
 
 type ConfirmOrder string
 const(
     StartConfirmOrder ConfirmOrder = "start"
     ConfirmConfirmOrder ConfirmOrder = "confirm"
-    
+    errRejectedConfirmOrder ConfirmOrder = "errRejected"
 )
 
 
@@ -124,11 +129,13 @@ func (t ConfirmOrder) Is () bool{
 
 
 type Message struct{
-    ID          string `json:"id"`
-    Command     string `json:"command"`
-    StepName    string `json:"step_name"`
+    ID          string    `json:"id"`
+    Command     string    `json:"command"`
+    StepName    string    `json:"step_name"`
+    Direction   direction `json:"direction"`
+
     //If it need we can add payload to message.
-    Payload     []byte `json:'payload"`
+    Payload     []byte `json:"payload"`
 }
 
 func MessageByte(id string, command string) []byte {
@@ -452,8 +459,9 @@ func NewConfirmOrderReceiver(b broker.Broker) *ConfirmOrderReceiver{
 
 type Orchestrator struct {
     b broker.Broker
+    log  logger.Logger
     //TODO add callback for bad transaction for example: use this if we reject transaction witch has rejected.
-    //TODO use micro logger interface
+    //TODO add storage
 }
 
 func (o *Orchestrator) Do(options ...broker.SubscribeOption) (broker.Subscriber, error) {
@@ -470,15 +478,15 @@ func (o *Orchestrator) handler(e broker.Event) error {
 
     switch steps(m.StepName){
         case verify_consumer:
-            return o.verify_consumerRoute(e.Message(), VerifyConsumer(m.Command), Direction)
+            return o.verify_consumerRoute(e.Message(), VerifyConsumer(m.Command), m.Direction)
         case create_ticket:
-            return o.create_ticketRoute(e.Message(), CreateTicket(m.Command), Direction)
+            return o.create_ticketRoute(e.Message(), CreateTicket(m.Command), m.Direction)
         case verify_card:
-            return o.verify_cardRoute(e.Message(), VerifyCard(m.Command), Direction)
+            return o.verify_cardRoute(e.Message(), VerifyCard(m.Command), m.Direction)
         case confirm_ticket:
-            return o.confirm_ticketRoute(e.Message(), ConfirmTicket(m.Command), Direction)
+            return o.confirm_ticketRoute(e.Message(), ConfirmTicket(m.Command), m.Direction)
         case confirm_order:
-            return o.confirm_orderRoute(e.Message(), ConfirmOrder(m.Command), Direction)
+            return o.confirm_orderRoute(e.Message(), ConfirmOrder(m.Command), m.Direction)
         
     }
     return nil
@@ -493,7 +501,7 @@ func (o *Orchestrator)verify_consumerRoute(m *broker.Message, typeOf VerifyConsu
         case Up:
             switch typeOf{
                 case StartcheckVerifyConsumer:
-        //            return o.b.Publish("verify_consumer.pending", m, nil)
+                    o.log.Log(logger.WarnLevel,StartcheckVerifyConsumer+" is not defined for orchestrator")
                     return nil
                 case CheckedVerifyConsumer:
                     return o.b.Publish("create_ticket.pending", m, nil)
@@ -506,17 +514,18 @@ func (o *Orchestrator)verify_consumerRoute(m *broker.Message, typeOf VerifyConsu
         case Down:
             switch typeOf{
                 case StartcheckVerifyConsumer:
-                //            return o.b.Publish("verify_consumer.pending", m, nil)
-                return nil
+                    o.log.Log(logger.WarnLevel,StartcheckVerifyConsumer+" is not defined for orchestrator")
+                    return nil
                 case CheckedVerifyConsumer:
-                    return o.b.Publish("create_ticket.pending", m, nil)
-                
-                    case FailedVerifyConsumer:
-                    return o.b.Publish("verify_consumer.rejected", m, nil)
+                    return nil
+                case FailedVerifyConsumer:
+                    o.log.Log(logger.ErrorLevel,"it's happened rejecting transaction which rejected")
+                    return errors.New("tx accident")
                 default:
                     panic(typeOf)
             }
     }
+    return nil
 }
 
 func (o *Orchestrator)create_ticketRoute(m *broker.Message, typeOf CreateTicket, direction direction) error {
@@ -527,7 +536,7 @@ func (o *Orchestrator)create_ticketRoute(m *broker.Message, typeOf CreateTicket,
         case Up:
             switch typeOf{
                 case StartcheckCreateTicket:
-        //            return o.b.Publish("create_ticket.pending", m, nil)
+                    o.log.Log(logger.WarnLevel,StartcheckCreateTicket+" is not defined for orchestrator")
                     return nil
                 case CheckedCreateTicket:
                     return o.b.Publish("verify_card.pending", m, nil)
@@ -540,17 +549,18 @@ func (o *Orchestrator)create_ticketRoute(m *broker.Message, typeOf CreateTicket,
         case Down:
             switch typeOf{
                 case StartcheckCreateTicket:
-                //            return o.b.Publish("create_ticket.pending", m, nil)
-                return nil
+                    o.log.Log(logger.WarnLevel,StartcheckCreateTicket+" is not defined for orchestrator")
+                    return nil
                 case CheckedCreateTicket:
-                    return o.b.Publish("verify_card.pending", m, nil)
-                
-                    case FailedCreateTicket:
-                    return o.b.Publish("create_ticket.rejected", m, nil)
+                    return o.b.Publish("verify_consumer.pending", m, nil)
+                case FailedCreateTicket:
+                    o.log.Log(logger.ErrorLevel,"it's happened rejecting transaction which rejected")
+                    return errors.New("tx accident")
                 default:
                     panic(typeOf)
             }
     }
+    return nil
 }
 
 func (o *Orchestrator)verify_cardRoute(m *broker.Message, typeOf VerifyCard, direction direction) error {
@@ -561,7 +571,7 @@ func (o *Orchestrator)verify_cardRoute(m *broker.Message, typeOf VerifyCard, dir
         case Up:
             switch typeOf{
                 case StartcheckVerifyCard:
-        //            return o.b.Publish("verify_card.pending", m, nil)
+                    o.log.Log(logger.WarnLevel,StartcheckVerifyCard+" is not defined for orchestrator")
                     return nil
                 case CheckedVerifyCard:
                     return o.b.Publish("confirm_ticket.pending", m, nil)
@@ -574,17 +584,18 @@ func (o *Orchestrator)verify_cardRoute(m *broker.Message, typeOf VerifyCard, dir
         case Down:
             switch typeOf{
                 case StartcheckVerifyCard:
-                //            return o.b.Publish("verify_card.pending", m, nil)
-                return nil
+                    o.log.Log(logger.WarnLevel,StartcheckVerifyCard+" is not defined for orchestrator")
+                    return nil
                 case CheckedVerifyCard:
-                    return o.b.Publish("confirm_ticket.pending", m, nil)
-                
-                    case FailedVerifyCard:
-                    return o.b.Publish("verify_card.rejected", m, nil)
+                    return o.b.Publish("create_ticket.pending", m, nil)
+                case FailedVerifyCard:
+                    o.log.Log(logger.ErrorLevel,"it's happened rejecting transaction which rejected")
+                    return errors.New("tx accident")
                 default:
                     panic(typeOf)
             }
     }
+    return nil
 }
 
 func (o *Orchestrator)confirm_ticketRoute(m *broker.Message, typeOf ConfirmTicket, direction direction) error {
@@ -595,7 +606,7 @@ func (o *Orchestrator)confirm_ticketRoute(m *broker.Message, typeOf ConfirmTicke
         case Up:
             switch typeOf{
                 case StartConfirmTicket:
-        //            return o.b.Publish("confirm_ticket.pending", m, nil)
+                    o.log.Log(logger.WarnLevel,StartConfirmTicket+" is not defined for orchestrator")
                     return nil
                 case ConfirmConfirmTicket:
                     return o.b.Publish("confirm_order.pending", m, nil)
@@ -606,15 +617,18 @@ func (o *Orchestrator)confirm_ticketRoute(m *broker.Message, typeOf ConfirmTicke
         case Down:
             switch typeOf{
                 case StartConfirmTicket:
-                //            return o.b.Publish("confirm_ticket.pending", m, nil)
-                return nil
+                    o.log.Log(logger.WarnLevel,StartConfirmTicket+" is not defined for orchestrator")
+                    return nil
                 case ConfirmConfirmTicket:
-                    return o.b.Publish("confirm_order.pending", m, nil)
-                
+                    return o.b.Publish("verify_card.pending", m, nil)
+                case errRejectedConfirmTicket:
+                    o.log.Log(logger.ErrorLevel,"it's happened rejecting transaction which rejected")
+                    return errors.New("tx accident")
                 default:
                     panic(typeOf)
             }
     }
+    return nil
 }
 
 func (o *Orchestrator)confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder, direction direction) error {
@@ -625,7 +639,7 @@ func (o *Orchestrator)confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder,
         case Up:
             switch typeOf{
                 case StartConfirmOrder:
-        //            return o.b.Publish("confirm_order.pending", m, nil)
+                    o.log.Log(logger.WarnLevel,StartConfirmOrder+" is not defined for orchestrator")
                     return nil
                 case ConfirmConfirmOrder:
                     return nil
@@ -636,15 +650,18 @@ func (o *Orchestrator)confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder,
         case Down:
             switch typeOf{
                 case StartConfirmOrder:
-                //            return o.b.Publish("confirm_order.pending", m, nil)
-                return nil
-                case ConfirmConfirmOrder:
+                    o.log.Log(logger.WarnLevel,StartConfirmOrder+" is not defined for orchestrator")
                     return nil
-                
+                case ConfirmConfirmOrder:
+                    return o.b.Publish("confirm_ticket.pending", m, nil)
+                case errRejectedConfirmOrder:
+                    o.log.Log(logger.ErrorLevel,"it's happened rejecting transaction which rejected")
+                    return errors.New("tx accident")
                 default:
                     panic(typeOf)
             }
     }
+    return nil
 }
 
 

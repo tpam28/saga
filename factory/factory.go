@@ -2,6 +2,7 @@ package factory
 
 import (
 	"bytes"
+	"go/format"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -25,15 +26,8 @@ var fns = template.FuncMap{
 
 type Factory struct {
 	domain.StepList
-	File *os.File
-}
-
-func (f *Factory) Write() error {
-	_, err := f.File.Write([]byte(imports))
-	if err != nil {
-		return err
-	}
-	return nil
+	PathFile    string
+	PackageName string
 }
 
 func (f *Factory) Do(list domain.StepList) {
@@ -44,11 +38,18 @@ func (f *Factory) Do(list domain.StepList) {
 		panic(err)
 	}
 	var buf bytes.Buffer
+	buf.Write([]byte("//Automatically generated file; DO NOT EDIT\n"))
+	buf.Write([]byte("package " + f.PackageName ))
 	err = t.Execute(&buf, list)
 	if err != nil {
 		panic(err)
 	}
-	err =ioutil.WriteFile("example.go",buf.Bytes(),0755)
+	os.Remove(f.PathFile)
+	b, err := format.Source(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(f.PathFile, b, 0755)
 	if err != nil {
 		panic(err)
 	}
