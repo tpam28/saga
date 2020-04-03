@@ -24,6 +24,7 @@ func (f *Factory) Do(list domain.StepList) {
 	if err != nil {
 		panic(err)
 	}
+
 	var buf bytes.Buffer
 	buf.Write([]byte("//Automatically generated file; DO NOT EDIT\n"))
 	buf.Write([]byte("package " + f.PackageName ))
@@ -31,11 +32,17 @@ func (f *Factory) Do(list domain.StepList) {
 	if err != nil {
 		panic(err)
 	}
-	os.Remove(f.PathFile)
+
+	err = os.Remove(f.PathFile)
+	if err != nil {
+		panic("remove file failed with err: " + err.Error())
+	}
+
 	b, err := format.Source(buf.Bytes())
 	if err != nil {
 		panic(err)
 	}
+
 	err = ioutil.WriteFile(f.PathFile, b, 0755)
 	if err != nil {
 		panic(err)

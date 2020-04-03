@@ -12,7 +12,6 @@ import (
 //TODO chacnge
 const orchestratorRoutingKey = "milestone.orchestrator"
 
-var ErrMethodNotAvailable = errors.New("method not available")
 var ErrToManyRetries = errors.New("the number of attempts is too large")
 
 type direction int
@@ -50,14 +49,14 @@ type Transmitter interface {
 	Rejected(m *Message) error
 }
 
-type states string
+type steps string
 
 const (
-	verify_consumer states = "verify_consumer"
-	create_ticket   states = "create_ticket"
-	verify_card     states = "verify_card"
-	confirm_ticket  states = "confirm_ticket"
-	confirm_order   states = "confirm_order"
+	verify_consumer steps = "verify_consumer"
+	create_ticket   steps = "create_ticket"
+	verify_card     steps = "verify_card"
+	confirm_ticket  steps = "confirm_ticket"
+	confirm_order   steps = "confirm_order"
 )
 
 type VerifyConsumer string
@@ -140,7 +139,8 @@ type Message struct {
 	Command   string    `json:"command"`
 	StepName  string    `json:"step_name"`
 	Direction direction `json:"direction"`
-	Retry     int       `json:"retry"`
+	//The current number of the retry
+	Retry int `json:"retry"`
 	//If it need we can add payload to message.
 	Payload []byte `json:"payload"`
 }
@@ -764,9 +764,3 @@ func NewOrchestrator(b broker.Broker, log logger.Logger) *Orchestrator {
 		log: log,
 	}
 }
-
-//TODO will add handler if it need
-//type OrchestratorHandler func(event broker.Event)
-//func AddHandler(h OrchestratorHandler) {
-//
-//}
