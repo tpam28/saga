@@ -10,8 +10,8 @@ which of that may be one of three types:
 2. Pivot
 3. Retriable
 
-Compesatable and Pivot states must contain two keys – negative and positive and three semantic locks – pending, approval and rejected.
-Retriable state contains one positive key and two semantic locks – pending and approval. 
+Compesatable and Pivot states must contain three semantic locks – pending, approval and rejected.
+Retriable state contains two semantic locks – pending and approval. 
 
 ###Code-generation 
 See makefile.

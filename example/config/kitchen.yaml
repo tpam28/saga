@@ -1,39 +1,24 @@
 milestone:
   - verify_consumer:
-      keys:
-        - ConsumerVerificationFailed
-        - ConsumerVerifed
-      #optional
-      #need pending,approval,rejected
       semanticLock:
         pending: startcheck
         approval: checked
         rejected: failed
   - create_ticket:
-      keys:
-        - TicketCreationFailed
-        - TicketCreate
       semanticLock:
         pending: startcheck
         approval: checked
         rejected: failed
   - verify_card:
-      keys:
-        - CardAuthorizationFailed
-        - CardAutorizationComplete
       semanticLock:
         pending: startcheck
         approval: checked
         rejected: failed
   - confirm_ticket:
-      keys:
-        - ApproveTicket
       semanticLock:
         pending: start
         approval: confirm
   - confirm_order:
-      keys:
-        - ApproveOrder
       semanticLock:
         pending: start
         approval: confirm

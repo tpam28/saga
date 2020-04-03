@@ -6,23 +6,10 @@ import (
 	"html/template"
 	"io/ioutil"
 	"os"
-	"reflect"
 
 	"github.com/Masterminds/sprig"
 	"github.com/tpam28/saga/domain"
 )
-
-var imports = `
-import (
-	"github.com/micro/go-micro/v2/broker"
-)
-`
-
-var fns = template.FuncMap{
-	"last": func(x int, a interface{}) bool {
-		return x == reflect.ValueOf(a).Len()-1
-	},
-}
 
 type Factory struct {
 	domain.StateList

@@ -17,34 +17,6 @@ func NamesFromMap(m []map[string]map[string]interface{}) []string {
 	return res
 }
 
-func GetKeys(m map[string]interface{}) (*domain.KeysL, error) {
-	el, ok := m["keys"]
-	if !ok {
-		return nil, domain.KeysNotFoundErr
-	}
-
-	tmp, ok := el.([]interface{})
-	if !ok {
-		return nil, domain.KeysInvalidFormatErr
-	}
-
-	res := make([]string, len(tmp))
-	for i, v := range tmp {
-		res[i] = fmt.Sprint(v)
-	}
-
-	if len(res) == 0 {
-		return nil, domain.ErrNoRows
-	}
-
-	keys := &domain.KeysL{
-		First: res[0],
-	}
-	if len(res) > 1 {
-		keys.Second = res[1]
-	}
-	return keys, nil
-}
 
 func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
 	el, flag1 := m[string(domain.SemanticLock)]
@@ -89,24 +61,19 @@ func GetSemantic(m map[string]interface{}) (*domain.SemanticLockL, error) {
 }
 
 func ParseState(name string, m map[string]map[string]interface{}) (*domain.State, error) {
-	keys, err := GetKeys(m[name])
-	if err != nil {
-		return nil, err
-	}
 	semantic, err := GetSemantic(m[name])
 	if err != nil {
 		return nil, err
 	}
-	semanticType := domain.Compensatory
+	semanticType := domain.Compensatable
 	if semantic.Rejected == "" {
-		semanticType = domain.Repeat
+		semanticType = domain.Retriable
 	}
 
 	return &domain.State{
 		Name: name,
 		T:    semanticType,
 		Sl:   *semantic,
-		Keys: *keys,
 	}, nil
 }
 

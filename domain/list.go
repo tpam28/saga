@@ -33,7 +33,6 @@ type State struct {
 	Name string
 	T    TransactionType
 	Sl   SemanticLockL
-	Keys KeysL
 	Prev *State
 	Next *State
 }
@@ -42,9 +41,4 @@ type SemanticLockL struct {
 	Pending  string
 	Approval string
 	Rejected string
-}
-
-type KeysL struct {
-	First  string
-	Second string
 }

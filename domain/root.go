@@ -4,7 +4,6 @@ type Root string
 
 const (
 	Milestone Root = "milestone"
-	Build     Root = "build"
 )
 
 type TransactionType string
@@ -18,7 +17,6 @@ const (
 type Options string
 
 const (
-	Keys         Options = "keys"
 	SemanticLock Options = "semanticLock"
 )
 
