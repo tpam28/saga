@@ -12,12 +12,12 @@ import (
 )
 
 type Factory struct {
-	domain.StateList
+	domain.StepList
 	PathFile    string
 	PackageName string
 }
 
-func (f *Factory) Do(list domain.StateList) {
+func (f *Factory) Do(list domain.StepList) {
 	t := template.New("const.tpl")
 	t = t.Funcs(sprig.FuncMap())
 	t, err := t.ParseFiles("factory/const.tpl")

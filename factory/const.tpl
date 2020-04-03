@@ -74,7 +74,7 @@ func (t {{.Name  | camelcase}}) Is () bool{
 type Message struct{
     ID          string    `json:"id"`
     Command     string    `json:"command"`
-    StateName    string    `json:"state_name"`
+    StepName    string    `json:"step_name"`
     Direction   direction `json:"direction"`
     Retry       int       `json:"retry"`
     //If it need we can add payload to message.
@@ -96,7 +96,7 @@ type {{.Name | camelcase}}Transmitter struct{
 }
 func (t *{{.Name | camelcase}}Transmitter)Pending(m *Message) error {
     m.Command = string({{.Sl.Pending | camelcase}}{{.Name  | camelcase}})
-    m.StateName = "{{.Name}}"
+    m.StepName = "{{.Name}}"
     b,_ :=json.Marshal(m)
     body := &broker.Message{Body:b}
     return t.b.Publish(orchestratorRoutingKey, body)
@@ -104,7 +104,7 @@ func (t *{{.Name | camelcase}}Transmitter)Pending(m *Message) error {
 
 func (t *{{.Name | camelcase}}Transmitter)Approval(m *Message) error {
     m.Command = string({{.Sl.Approval | camelcase}}{{.Name  | camelcase}})
-    m.StateName = "{{.Name}}"
+    m.StepName = "{{.Name}}"
     b,_ :=json.Marshal(m)
     body := &broker.Message{Body:b}
     return t.b.Publish(orchestratorRoutingKey,  body)
@@ -112,7 +112,7 @@ func (t *{{.Name | camelcase}}Transmitter)Approval(m *Message) error {
 
 func (t *{{.Name | camelcase}}Transmitter)Rejected(m *Message) error {
 {{if ne .Sl.Rejected ""}}    m.Command = string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}})
-    m.StateName = "{{.Name}}"
+    m.StepName = "{{.Name}}"
     b,_ :=json.Marshal(m)
     body := &broker.Message{Body:b}
     return t.b.Publish(orchestratorRoutingKey, body)
@@ -195,7 +195,7 @@ func (o *Orchestrator) handler(e broker.Event) error {
         panic(err)
     }
 
-    switch states(m.StateName){
+    switch steps(m.StepName){
         {{range . }}case {{.Name}}:
             return o.{{.Name}}Route(e.Message(), {{.Name | camelcase}}(m.Command), m.Direction)
         {{end}}

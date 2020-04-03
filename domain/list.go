@@ -1,8 +1,8 @@
 package domain
 
-type StateList []State
+type StepList []Step
 
-func (s *StateList) Push(step State) error {
+func (s *StepList) Push(step Step) error {
 	prev := len(*s)-1
 	tmp := *s
 
@@ -29,12 +29,12 @@ func (s *StateList) Push(step State) error {
 	return nil
 }
 
-type State struct {
+type Step struct {
 	Name string
 	T    TransactionType
 	Sl   SemanticLockL
-	Prev *State
-	Next *State
+	Prev *Step
+	Next *Step
 }
 
 type SemanticLockL struct {

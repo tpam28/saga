@@ -4,14 +4,14 @@
 ###Config
 A config describe a finite state machine of your transaction.
 The config musts contain a milestone which contains states of the transaction.
-Any state musts contain keys and semanticLock statement.
+Any state musts contain state statement.
 which of that may be one of three types:
 1. Compensatable 
 2. Pivot
 3. Retriable
 
-Compesatable and Pivot states must contain three semantic locks – pending, approval and rejected.
-Retriable state contains two semantic locks – pending and approval. 
+Compesatable and Pivot step must contain three states – pending, approval and rejected.
+Retriable step contains two states – pending and approval. 
 
 ###Code-generation 
 See makefile.

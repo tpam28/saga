@@ -17,7 +17,7 @@ const (
 type Options string
 
 const (
-	SemanticLock Options = "semanticLock"
+	States Options = "states"
 )
 
 type TypeOfSematicLock string

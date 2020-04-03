@@ -138,7 +138,7 @@ func (t ConfirmOrder) Is() bool {
 type Message struct {
 	ID        string    `json:"id"`
 	Command   string    `json:"command"`
-	StateName string    `json:"state_name"`
+	StepName  string    `json:"step_name"`
 	Direction direction `json:"direction"`
 	Retry     int       `json:"retry"`
 	//If it need we can add payload to message.
@@ -160,7 +160,7 @@ type VerifyConsumerTransmitter struct {
 
 func (t *VerifyConsumerTransmitter) Pending(m *Message) error {
 	m.Command = string(StartcheckVerifyConsumer)
-	m.StateName = "verify_consumer"
+	m.StepName = "verify_consumer"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -168,7 +168,7 @@ func (t *VerifyConsumerTransmitter) Pending(m *Message) error {
 
 func (t *VerifyConsumerTransmitter) Approval(m *Message) error {
 	m.Command = string(CheckedVerifyConsumer)
-	m.StateName = "verify_consumer"
+	m.StepName = "verify_consumer"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -176,7 +176,7 @@ func (t *VerifyConsumerTransmitter) Approval(m *Message) error {
 
 func (t *VerifyConsumerTransmitter) Rejected(m *Message) error {
 	m.Command = string(FailedVerifyConsumer)
-	m.StateName = "verify_consumer"
+	m.StepName = "verify_consumer"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -238,7 +238,7 @@ type CreateTicketTransmitter struct {
 
 func (t *CreateTicketTransmitter) Pending(m *Message) error {
 	m.Command = string(StartcheckCreateTicket)
-	m.StateName = "create_ticket"
+	m.StepName = "create_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -246,7 +246,7 @@ func (t *CreateTicketTransmitter) Pending(m *Message) error {
 
 func (t *CreateTicketTransmitter) Approval(m *Message) error {
 	m.Command = string(CheckedCreateTicket)
-	m.StateName = "create_ticket"
+	m.StepName = "create_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -254,7 +254,7 @@ func (t *CreateTicketTransmitter) Approval(m *Message) error {
 
 func (t *CreateTicketTransmitter) Rejected(m *Message) error {
 	m.Command = string(FailedCreateTicket)
-	m.StateName = "create_ticket"
+	m.StepName = "create_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -316,7 +316,7 @@ type VerifyCardTransmitter struct {
 
 func (t *VerifyCardTransmitter) Pending(m *Message) error {
 	m.Command = string(StartcheckVerifyCard)
-	m.StateName = "verify_card"
+	m.StepName = "verify_card"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -324,7 +324,7 @@ func (t *VerifyCardTransmitter) Pending(m *Message) error {
 
 func (t *VerifyCardTransmitter) Approval(m *Message) error {
 	m.Command = string(CheckedVerifyCard)
-	m.StateName = "verify_card"
+	m.StepName = "verify_card"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -332,7 +332,7 @@ func (t *VerifyCardTransmitter) Approval(m *Message) error {
 
 func (t *VerifyCardTransmitter) Rejected(m *Message) error {
 	m.Command = string(FailedVerifyCard)
-	m.StateName = "verify_card"
+	m.StepName = "verify_card"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -394,7 +394,7 @@ type ConfirmTicketTransmitter struct {
 
 func (t *ConfirmTicketTransmitter) Pending(m *Message) error {
 	m.Command = string(StartConfirmTicket)
-	m.StateName = "confirm_ticket"
+	m.StepName = "confirm_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -402,7 +402,7 @@ func (t *ConfirmTicketTransmitter) Pending(m *Message) error {
 
 func (t *ConfirmTicketTransmitter) Approval(m *Message) error {
 	m.Command = string(ConfirmConfirmTicket)
-	m.StateName = "confirm_ticket"
+	m.StepName = "confirm_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -475,7 +475,7 @@ type ConfirmOrderTransmitter struct {
 
 func (t *ConfirmOrderTransmitter) Pending(m *Message) error {
 	m.Command = string(StartConfirmOrder)
-	m.StateName = "confirm_order"
+	m.StepName = "confirm_order"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -483,7 +483,7 @@ func (t *ConfirmOrderTransmitter) Pending(m *Message) error {
 
 func (t *ConfirmOrderTransmitter) Approval(m *Message) error {
 	m.Command = string(ConfirmConfirmOrder)
-	m.StateName = "confirm_order"
+	m.StepName = "confirm_order"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -568,7 +568,7 @@ func (o *Orchestrator) handler(e broker.Event) error {
 		panic(err)
 	}
 
-	switch states(m.StateName) {
+	switch steps(m.StepName) {
 	case verify_consumer:
 		return o.verify_consumerRoute(e.Message(), VerifyConsumer(m.Command), m.Direction)
 	case create_ticket:
