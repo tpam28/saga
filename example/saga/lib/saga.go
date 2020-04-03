@@ -63,25 +63,25 @@ const (
 type VerifyConsumer string
 
 const (
-	StartcheckVerifyConsumer VerifyConsumer = "startcheck"
-	CheckedVerifyConsumer    VerifyConsumer = "checked"
-	FailedVerifyConsumer     VerifyConsumer = "failed"
+	BeginVerifyVerifyConsumer VerifyConsumer = "begin_verify"
+	CheckedVerifyConsumer     VerifyConsumer = "checked"
+	FailedVerifyConsumer      VerifyConsumer = "failed"
 )
 
 type CreateTicket string
 
 const (
-	StartcheckCreateTicket CreateTicket = "startcheck"
-	CheckedCreateTicket    CreateTicket = "checked"
+	BeginCheckCreateTicket CreateTicket = "begin_check"
+	VerifedCreateTicket    CreateTicket = "verifed"
 	FailedCreateTicket     CreateTicket = "failed"
 )
 
 type VerifyCard string
 
 const (
-	StartcheckVerifyCard VerifyCard = "startcheck"
-	CheckedVerifyCard    VerifyCard = "checked"
-	FailedVerifyCard     VerifyCard = "failed"
+	BeginVerifyVerifyCard VerifyCard = "begin_verify"
+	VerifedVerifyCard     VerifyCard = "verifed"
+	FailedVerifyCard      VerifyCard = "failed"
 )
 
 type ConfirmTicket string
@@ -101,21 +101,21 @@ const (
 )
 
 func (t VerifyConsumer) Is() bool {
-	if t == StartcheckVerifyConsumer || t == CheckedVerifyConsumer || t == FailedVerifyConsumer {
+	if t == BeginVerifyVerifyConsumer || t == CheckedVerifyConsumer || t == FailedVerifyConsumer {
 		return true
 	}
 	return false
 }
 
 func (t CreateTicket) Is() bool {
-	if t == StartcheckCreateTicket || t == CheckedCreateTicket || t == FailedCreateTicket {
+	if t == BeginCheckCreateTicket || t == VerifedCreateTicket || t == FailedCreateTicket {
 		return true
 	}
 	return false
 }
 
 func (t VerifyCard) Is() bool {
-	if t == StartcheckVerifyCard || t == CheckedVerifyCard || t == FailedVerifyCard {
+	if t == BeginVerifyVerifyCard || t == VerifedVerifyCard || t == FailedVerifyCard {
 		return true
 	}
 	return false
@@ -159,7 +159,7 @@ type VerifyConsumerTransmitter struct {
 }
 
 func (t *VerifyConsumerTransmitter) Pending(m *Message) error {
-	m.Command = string(StartcheckVerifyConsumer)
+	m.Command = string(BeginVerifyVerifyConsumer)
 	m.StepName = "verify_consumer"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
@@ -237,7 +237,7 @@ type CreateTicketTransmitter struct {
 }
 
 func (t *CreateTicketTransmitter) Pending(m *Message) error {
-	m.Command = string(StartcheckCreateTicket)
+	m.Command = string(BeginCheckCreateTicket)
 	m.StepName = "create_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
@@ -245,7 +245,7 @@ func (t *CreateTicketTransmitter) Pending(m *Message) error {
 }
 
 func (t *CreateTicketTransmitter) Approval(m *Message) error {
-	m.Command = string(CheckedCreateTicket)
+	m.Command = string(VerifedCreateTicket)
 	m.StepName = "create_ticket"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
@@ -315,7 +315,7 @@ type VerifyCardTransmitter struct {
 }
 
 func (t *VerifyCardTransmitter) Pending(m *Message) error {
-	m.Command = string(StartcheckVerifyCard)
+	m.Command = string(BeginVerifyVerifyCard)
 	m.StepName = "verify_card"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
@@ -323,7 +323,7 @@ func (t *VerifyCardTransmitter) Pending(m *Message) error {
 }
 
 func (t *VerifyCardTransmitter) Approval(m *Message) error {
-	m.Command = string(CheckedVerifyCard)
+	m.Command = string(VerifedVerifyCard)
 	m.StepName = "verify_card"
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
@@ -591,8 +591,8 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 	switch direction {
 	case Up:
 		switch typeOf {
-		case StartcheckVerifyConsumer:
-			o.log.Log(logger.WarnLevel, StartcheckVerifyConsumer+" is not defined for orchestrator")
+		case BeginVerifyVerifyConsumer:
+			o.log.Log(logger.WarnLevel, BeginVerifyVerifyConsumer+" is not defined for orchestrator")
 			return nil
 		case CheckedVerifyConsumer:
 			return o.b.Publish("create_ticket.pending", m)
@@ -604,8 +604,8 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 		}
 	case Down:
 		switch typeOf {
-		case StartcheckVerifyConsumer:
-			o.log.Log(logger.WarnLevel, StartcheckVerifyConsumer+" is not defined for orchestrator")
+		case BeginVerifyVerifyConsumer:
+			o.log.Log(logger.WarnLevel, BeginVerifyVerifyConsumer+" is not defined for orchestrator")
 			return nil
 		case CheckedVerifyConsumer:
 			return nil
@@ -626,10 +626,10 @@ func (o *Orchestrator) create_ticketRoute(m *broker.Message, typeOf CreateTicket
 	switch direction {
 	case Up:
 		switch typeOf {
-		case StartcheckCreateTicket:
-			o.log.Log(logger.WarnLevel, StartcheckCreateTicket+" is not defined for orchestrator")
+		case BeginCheckCreateTicket:
+			o.log.Log(logger.WarnLevel, BeginCheckCreateTicket+" is not defined for orchestrator")
 			return nil
-		case CheckedCreateTicket:
+		case VerifedCreateTicket:
 			return o.b.Publish("verify_card.pending", m)
 
 		case FailedCreateTicket:
@@ -639,10 +639,10 @@ func (o *Orchestrator) create_ticketRoute(m *broker.Message, typeOf CreateTicket
 		}
 	case Down:
 		switch typeOf {
-		case StartcheckCreateTicket:
-			o.log.Log(logger.WarnLevel, StartcheckCreateTicket+" is not defined for orchestrator")
+		case BeginCheckCreateTicket:
+			o.log.Log(logger.WarnLevel, BeginCheckCreateTicket+" is not defined for orchestrator")
 			return nil
-		case CheckedCreateTicket:
+		case VerifedCreateTicket:
 			return o.b.Publish("verify_consumer.pending", m)
 		case FailedCreateTicket:
 			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")
@@ -661,10 +661,10 @@ func (o *Orchestrator) verify_cardRoute(m *broker.Message, typeOf VerifyCard, di
 	switch direction {
 	case Up:
 		switch typeOf {
-		case StartcheckVerifyCard:
-			o.log.Log(logger.WarnLevel, StartcheckVerifyCard+" is not defined for orchestrator")
+		case BeginVerifyVerifyCard:
+			o.log.Log(logger.WarnLevel, BeginVerifyVerifyCard+" is not defined for orchestrator")
 			return nil
-		case CheckedVerifyCard:
+		case VerifedVerifyCard:
 			return o.b.Publish("confirm_ticket.pending", m)
 
 		case FailedVerifyCard:
@@ -674,10 +674,10 @@ func (o *Orchestrator) verify_cardRoute(m *broker.Message, typeOf VerifyCard, di
 		}
 	case Down:
 		switch typeOf {
-		case StartcheckVerifyCard:
-			o.log.Log(logger.WarnLevel, StartcheckVerifyCard+" is not defined for orchestrator")
+		case BeginVerifyVerifyCard:
+			o.log.Log(logger.WarnLevel, BeginVerifyVerifyCard+" is not defined for orchestrator")
 			return nil
-		case CheckedVerifyCard:
+		case VerifedVerifyCard:
 			return o.b.Publish("create_ticket.pending", m)
 		case FailedVerifyCard:
 			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")

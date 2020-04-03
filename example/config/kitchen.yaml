@@ -1,18 +1,18 @@
 milestone:
   - verify_consumer:
       states:
-        pending: startcheck
+        pending: begin_verify
         approval: checked
         rejected: failed
   - create_ticket:
       states:
-        pending: startcheck
-        approval: checked
+        pending: begin_check
+        approval: verifed
         rejected: failed
   - verify_card:
       states:
-        pending: startcheck
-        approval: checked
+        pending: begin_verify
+        approval: verifed
         rejected: failed
   - confirm_ticket:
       states:
