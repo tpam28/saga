@@ -2,18 +2,22 @@
 gen:
 	@go run main.go --path=example/config/kitchen.yaml --output=example/saga/lib/saga.go
 
-test:
-	rm -rf example/build
-	mkdir example/build/
-	@go build example/saga/main.go -o example/build/saga
-	@go build example/vf_consumer/main.go -o example/build/vf_consumer
-	@go build example/mk_tiket/main.go -o example/build/mk_tiket
-	@go build example/vf_card/main.go -o example/build/vf_card
-	@go build example/confirm_tiket/main.go -o example/build/confirm_tiket
-	@go build example/confirm_order/main.go -o example/build/confirm_order
-	./example/build/saga &
-	./example/build/vf_consumer &
-	./example/build/mk_tiket &
-	./example/build/vf_card &
-	./example/build/confirm_tiket &
-	./example/build/confirm_order
+
+test-build:
+	$(shell cd example/saga ; go build -o ../../example/build/saga)
+	$(shell cd example/vf_consumer ; go build -o ../../example/build/vf_consumer)
+	$(shell cd  example/mk_tiket ; go build -o ../../example/build/mk_tiket)
+	$(shell cd  example/vf_card ; go build -o ../../example/build/vf_card)
+	$(shell cd  example/confirm_tiket ; go build -o ../../example/build/confirm_tiket)
+	$(shell cd  example/confirm_order ; go build -o ../../example/build/confirm_order)
+	$(shell chmod -R 777 example/build/)
+
+.ONESHELL:
+test-run:
+	cd example/build
+	./saga &
+	./vf_consumer &
+	./mk_tiket &
+	./vf_card &
+	./confirm_tiket &
+	./confirm_order
