@@ -20,3 +20,7 @@ it have two parameters intput and output.
 
 ###Example
 Use make test
+
+#####What's happened when service rejected tx which was rejected?
+
+#####What's happened when retriable tx is rejected?
