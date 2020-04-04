@@ -20,6 +20,10 @@ func main() {
 	reciver := lib.NewVerifyCardReceiver(b)
 	_, err = reciver.Rejected(func(event *lib.EventTransmitter) error {
 		log.Println("vf card got rejected event :",event.ID())
+		err := event.Approval()
+		if err != nil{
+			log.Println(err)
+		}
 		return nil
 	})
 	if err != nil {
@@ -31,13 +35,13 @@ func main() {
 		if event.ID() == "3" {
 			err = event.Rejected()
 			if err != nil {
-				panic(err)
+				log.Println(err)
 			}
 			return nil
 		}
 		err = event.Approval()
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		return nil

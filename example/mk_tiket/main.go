@@ -32,13 +32,13 @@ func main() {
 		if event.ID() == "5" {
 			err = event.Rejected()
 			if err != nil {
-				panic(err)
+				log.Println(err)
 			}
 			return nil
 		}
 		err = event.Approval()
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		return nil
 	})
