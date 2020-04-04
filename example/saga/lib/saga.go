@@ -177,6 +177,9 @@ func (t *VerifyConsumerTransmitter) Approval(m *Message) error {
 func (t *VerifyConsumerTransmitter) Rejected(m *Message) error {
 	m.Command = string(FailedVerifyConsumer)
 	m.StepName = "verify_consumer"
+
+	m.Direction = Down
+
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -255,6 +258,9 @@ func (t *CreateTicketTransmitter) Approval(m *Message) error {
 func (t *CreateTicketTransmitter) Rejected(m *Message) error {
 	m.Command = string(FailedCreateTicket)
 	m.StepName = "create_ticket"
+
+	m.Direction = Down
+
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -333,6 +339,9 @@ func (t *VerifyCardTransmitter) Approval(m *Message) error {
 func (t *VerifyCardTransmitter) Rejected(m *Message) error {
 	m.Command = string(FailedVerifyCard)
 	m.StepName = "verify_card"
+
+	m.Direction = Down
+
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)

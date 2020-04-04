@@ -72,14 +72,14 @@ func (t {{.Name  | camelcase}}) Is () bool{
 {{end}}
 
 type Message struct{
-    ID          string    `json:"id"`
-    Command     string    `json:"command"`
-    StepName    string    `json:"step_name"`
-    Direction   direction `json:"direction"`
+    ID          string                  `json:"id"`
+    Command     string                  `json:"command"`
+    StepName    string                  `json:"step_name"`
+    Direction   direction               `json:"direction"`
     //The current number of the retry
-    Retry       int       `json:"retry"`
+    Retry       int                     `json:"retry"`
     //If it need we can add payload to message.
-    Payload     []byte `json:"payload"`
+    Payload     []byte                  `json:"payload"`
 }
 
 func NewMessage(id string) *Message {
@@ -114,6 +114,9 @@ func (t *{{.Name | camelcase}}Transmitter)Approval(m *Message) error {
 func (t *{{.Name | camelcase}}Transmitter)Rejected(m *Message) error {
 {{if ne .Sl.Rejected ""}}    m.Command = string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}})
     m.StepName = "{{.Name}}"
+    {{if ne .T "retriable"}}
+    m.Direction = Down
+    {{end}}
     b,_ :=json.Marshal(m)
     body := &broker.Message{Body:b}
     return t.b.Publish(orchestratorRoutingKey, body)

@@ -21,7 +21,7 @@ func main() {
 
 	transmitter := lib.NewVerifyConsumerTransmitter(b)
 	time.Sleep(5*time.Second)
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 10; i++ {
 		err = transmitter.Approval(lib.NewMessage(fmt.Sprint(i)))
 		if err != nil {
 			log.Println(err)
