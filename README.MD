@@ -18,7 +18,7 @@ See makefile.
 it have two parameters intput and output.
 
 
-<h3>Example</h3>
+### Example ###
 Use make test-run task=1
 ![First task](first_task.png)
 ```mermaid
