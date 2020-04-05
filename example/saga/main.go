@@ -3,15 +3,21 @@ package main
 import (
 	"github.com/micro/go-micro/v2/broker"
 	"github.com/micro/go-plugins/broker/rabbitmq/v2"
+	"github.com/spf13/viper"
 	"github.com/tpam28/saga/example/saga/lib"
 	"log"
+	"strings"
 	"time"
 )
 
 //run simple orchestrator
 func main() {
+	config := viper.New()
+	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	config.AutomaticEnv()
+
 	b:= rabbitmq.NewBroker(func(options *broker.Options) {
-		options.Addrs=append(options.Addrs,"amqp://evgen:wZCfo9@127.0.0.1:5672/test")
+		options.Addrs=append(options.Addrs, config.GetString("rabbitmq.dsn"))
 	})
 	err := b.Connect()
 	if err !=nil{

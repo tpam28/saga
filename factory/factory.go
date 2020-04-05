@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
+
 	"github.com/Masterminds/sprig"
 	"github.com/tpam28/saga/domain"
 )
@@ -17,9 +18,14 @@ type Factory struct {
 	PackageName string
 }
 
+var notNil = template.FuncMap{
+	"notNil": func(i *domain.Step) bool { return i != nil },
+}
+
 func (f *Factory) Do(list domain.StepList) {
 	t := template.New("const.tpl")
 	t = t.Funcs(sprig.FuncMap())
+	t = t.Funcs(notNil)
 	t, err := t.ParseFiles("factory/const.tpl")
 	if err != nil {
 		panic(err)

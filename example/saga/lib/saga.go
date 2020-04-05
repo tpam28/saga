@@ -86,17 +86,17 @@ const (
 type ConfirmTicket string
 
 const (
-	StartConfirmTicket       ConfirmTicket = "start"
-	ConfirmConfirmTicket     ConfirmTicket = "confirm"
-	errRejectedConfirmTicket ConfirmTicket = "errRejected"
+	StartConfirmTicket   ConfirmTicket = "start"
+	ConfirmConfirmTicket ConfirmTicket = "confirm"
+	FailedConfirmTicket  ConfirmTicket = "Failed"
 )
 
 type ConfirmOrder string
 
 const (
-	StartConfirmOrder       ConfirmOrder = "start"
-	ConfirmConfirmOrder     ConfirmOrder = "confirm"
-	errRejectedConfirmOrder ConfirmOrder = "errRejected"
+	StartConfirmOrder   ConfirmOrder = "start"
+	ConfirmConfirmOrder ConfirmOrder = "confirm"
+	FailedConfirmOrder  ConfirmOrder = "Failed"
 )
 
 func (t VerifyConsumer) Is() bool {
@@ -175,11 +175,12 @@ func (t *VerifyConsumerTransmitter) Approval(m *Message) error {
 }
 
 func (t *VerifyConsumerTransmitter) Rejected(m *Message) error {
-	m.Command = string(FailedVerifyConsumer)
+
 	m.StepName = "verify_consumer"
 
-	m.Direction = Down
+	m.Command = string(FailedVerifyConsumer)
 
+	m.Direction = Down
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -256,11 +257,12 @@ func (t *CreateTicketTransmitter) Approval(m *Message) error {
 }
 
 func (t *CreateTicketTransmitter) Rejected(m *Message) error {
-	m.Command = string(FailedCreateTicket)
+
 	m.StepName = "create_ticket"
 
-	m.Direction = Down
+	m.Command = string(FailedCreateTicket)
 
+	m.Direction = Down
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -337,11 +339,12 @@ func (t *VerifyCardTransmitter) Approval(m *Message) error {
 }
 
 func (t *VerifyCardTransmitter) Rejected(m *Message) error {
-	m.Command = string(FailedVerifyCard)
+
 	m.StepName = "verify_card"
 
-	m.Direction = Down
+	m.Command = string(FailedVerifyCard)
 
+	m.Direction = Down
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
@@ -418,6 +421,8 @@ func (t *ConfirmTicketTransmitter) Approval(m *Message) error {
 }
 
 func (t *ConfirmTicketTransmitter) Rejected(m *Message) error {
+
+	m.Command = string(FailedConfirmTicket)
 
 	if m.Retry > t.MaxRetries {
 		return ErrToManyRetries
@@ -499,6 +504,8 @@ func (t *ConfirmOrderTransmitter) Approval(m *Message) error {
 }
 
 func (t *ConfirmOrderTransmitter) Rejected(m *Message) error {
+
+	m.Command = string(FailedConfirmOrder)
 
 	if m.Retry > t.MaxRetries {
 		return ErrToManyRetries
@@ -597,6 +604,7 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 	if !typeOf.Is() {
 		return errors.New("invalid typeOf")
 	}
+
 	switch direction {
 	case Up:
 		switch typeOf {
@@ -625,6 +633,7 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 			panic(typeOf)
 		}
 	}
+
 	return nil
 }
 
@@ -632,6 +641,7 @@ func (o *Orchestrator) create_ticketRoute(m *broker.Message, typeOf CreateTicket
 	if !typeOf.Is() {
 		return errors.New("invalid typeOf")
 	}
+
 	switch direction {
 	case Up:
 		switch typeOf {
@@ -660,6 +670,7 @@ func (o *Orchestrator) create_ticketRoute(m *broker.Message, typeOf CreateTicket
 			panic(typeOf)
 		}
 	}
+
 	return nil
 }
 
@@ -667,6 +678,7 @@ func (o *Orchestrator) verify_cardRoute(m *broker.Message, typeOf VerifyCard, di
 	if !typeOf.Is() {
 		return errors.New("invalid typeOf")
 	}
+
 	switch direction {
 	case Up:
 		switch typeOf {
@@ -695,6 +707,7 @@ func (o *Orchestrator) verify_cardRoute(m *broker.Message, typeOf VerifyCard, di
 			panic(typeOf)
 		}
 	}
+
 	return nil
 }
 
@@ -702,32 +715,18 @@ func (o *Orchestrator) confirm_ticketRoute(m *broker.Message, typeOf ConfirmTick
 	if !typeOf.Is() {
 		return errors.New("invalid typeOf")
 	}
-	switch direction {
-	case Up:
-		switch typeOf {
-		case StartConfirmTicket:
-			o.log.Log(logger.WarnLevel, StartConfirmTicket+" is not defined for orchestrator")
-			return nil
-		case ConfirmConfirmTicket:
-			return o.b.Publish("confirm_order.pending", m)
 
-		default:
-			panic(typeOf)
-		}
-	case Down:
-		switch typeOf {
-		case StartConfirmTicket:
-			o.log.Log(logger.WarnLevel, StartConfirmTicket+" is not defined for orchestrator")
-			return nil
-		case ConfirmConfirmTicket:
-			return o.b.Publish("verify_card.pending", m)
-		case errRejectedConfirmTicket:
-			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")
-			return errors.New("tx accident")
-		default:
-			panic(typeOf)
-		}
+	switch typeOf {
+	case StartConfirmTicket:
+		o.log.Log(logger.WarnLevel, StartConfirmTicket+" is not defined for orchestrator")
+		return nil
+	case ConfirmConfirmTicket:
+		return o.b.Publish("confirm_order.pending", m)
+
+	default:
+		panic(typeOf)
 	}
+
 	return nil
 }
 
@@ -735,32 +734,18 @@ func (o *Orchestrator) confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder
 	if !typeOf.Is() {
 		return errors.New("invalid typeOf")
 	}
-	switch direction {
-	case Up:
-		switch typeOf {
-		case StartConfirmOrder:
-			o.log.Log(logger.WarnLevel, StartConfirmOrder+" is not defined for orchestrator")
-			return nil
-		case ConfirmConfirmOrder:
-			return nil
 
-		default:
-			panic(typeOf)
-		}
-	case Down:
-		switch typeOf {
-		case StartConfirmOrder:
-			o.log.Log(logger.WarnLevel, StartConfirmOrder+" is not defined for orchestrator")
-			return nil
-		case ConfirmConfirmOrder:
-			return o.b.Publish("confirm_ticket.pending", m)
-		case errRejectedConfirmOrder:
-			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")
-			return errors.New("tx accident")
-		default:
-			panic(typeOf)
-		}
+	switch typeOf {
+	case StartConfirmOrder:
+		o.log.Log(logger.WarnLevel, StartConfirmOrder+" is not defined for orchestrator")
+		return nil
+	case ConfirmConfirmOrder:
+		return nil
+
+	default:
+		panic(typeOf)
 	}
+
 	return nil
 }
 

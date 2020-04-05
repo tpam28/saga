@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"io/ioutil"
+	"log"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/tpam28/saga/domain"
@@ -9,8 +12,6 @@ import (
 	"github.com/tpam28/saga/helper"
 	"github.com/tpam28/saga/parser"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"log"
 )
 
 func main() {

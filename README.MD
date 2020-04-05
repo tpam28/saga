@@ -19,8 +19,19 @@ it have two parameters intput and output.
 
 
 ###Example
-Use make test
-
+Use make test-run task=1
+```mermaid
+sequenceDiagram
+  Verify consumer ->> Orchestrator:Accepted
+  Orchestrator ->> Create ticket:Pending
+  Create ticket ->> Orchestrator:Accepted
+  Orchestrator ->> Verify card:Pending
+  Verify card ->> Orchestrator:Accepted
+  Orchestrator ->> Confirm ticket:Pending
+  Confirm ticket ->> Orchestrator:Accepted
+  Orchestrator ->> Confirm order:Pending
+  Confirm order ->> Orchestrator:Accepted
+```
 #####What's happened when service rejected tx which was rejected?
 
 #####What's happened when retriable tx is rejected?

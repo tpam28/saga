@@ -1,33 +1,51 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/micro/go-micro/v2/broker"
 	"github.com/micro/go-plugins/broker/rabbitmq/v2"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"github.com/tpam28/saga/example/saga/lib"
-	"log"
-	"time"
 )
 
 func main() {
-	b:= rabbitmq.NewBroker(func(options *broker.Options) {
-		options.Addrs=append(options.Addrs,"amqp://evgen:wZCfo9@127.0.0.1:5672/test")
+	config := viper.New()
+	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	config.AutomaticEnv()
+	flag.Int("task", 1, "the number of task")
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+
+	b := rabbitmq.NewBroker(func(options *broker.Options) {
+		options.Addrs = append(options.Addrs, config.GetString("rabbitmq.dsn"))
 	})
 
 	err := b.Connect()
 	if err != nil {
 		panic(err)
 	}
-
-	transmitter := lib.NewVerifyConsumerTransmitter(b)
-	time.Sleep(5*time.Second)
-	for i := 0; i < 10; i++ {
-		err = transmitter.Approval(lib.NewMessage(fmt.Sprint(i)))
+	reciever := lib.NewVerifyConsumerReceiver(b)
+	reciever.Rejected(func(event *lib.EventTransmitter) error {
+		err := event.Approval()
 		if err != nil {
 			log.Println(err)
 		}
-		fmt.Println("vf consumer approval:",fmt.Sprint(i))
-		time.Sleep(1*time.Second)
+		return nil
+	})
+
+	transmitter := lib.NewVerifyConsumerTransmitter(b)
+	time.Sleep(5 * time.Second)
+	err = transmitter.Approval(lib.NewMessage(fmt.Sprint(viper.GetString("task"))))
+	if err != nil {
+		log.Println(err)
 	}
-	log.Println("good jober")
+
+	fmt.Println("vf consumer approval:", fmt.Sprint(viper.GetString("task")))
 }
