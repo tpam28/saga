@@ -29,10 +29,25 @@ func main() {
 		panic(err)
 	}
 
-	reciver := lib.NewCreateTicketReceiver(b)
+	reciver := lib.NewConfirmTicketReceiver(b)
 	_, err = reciver.Rejected(func(event *lib.EventTransmitter) error {
-		log.Println("create ticket got rejected event",event.ID())
+		if config.GetInt("task") == 3{
+			if event.Retry() < 3{
+				log.Println("confirm ticket got reject message event id",event.ID(),"event retry:",event.Retry())
+				err = event.Reject()
+				if err != nil{
+					log.Println(err)
+				}
+				return nil
+			}
+		}
 
+		err = event.Approve()
+		if err != nil{
+			log.Println(err)
+		}
+
+		log.Println("confirm_ticket got rejected event :", event.ID())
 
 		return nil
 	})
@@ -40,15 +55,15 @@ func main() {
 		panic(err)
 	}
 	_, err = reciver.Pending(func(event *lib.EventTransmitter) error {
-		log.Println("mk_tiket got pending  event :",event.ID())
-		if event.ID() == "5" {
-			err = event.Rejected()
+		log.Println("confirm_ticket got pending event :", event.ID())
+		if event.ID() == "3"{
+			err = event.Reject()
 			if err != nil {
 				log.Println(err)
 			}
 			return nil
 		}
-		err = event.Approval()
+		err = event.Approve()
 		if err != nil {
 			log.Println(err)
 		}
@@ -58,9 +73,5 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i < 5; i++ {
-		time.Sleep(30 * time.Second)
-	}
-
-	log.Println("good jober")
+	time.Sleep(30 * time.Second)
 }

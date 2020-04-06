@@ -42,13 +42,13 @@ func main() {
 	_, err = reciver.Pending(func(event *lib.EventTransmitter) error {
 		log.Println("confirm_order got pending event :", event.ID())
 		if event.ID() == "1" {
-			err = event.Rejected()
+			err = event.Reject()
 			if err != nil {
 				log.Println(err)
 			}
 			return nil
 		}
-		err = event.Approval()
+		err = event.Approve()
 		if err != nil {
 			log.Println(err)
 		}
@@ -59,9 +59,5 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i < 5; i++ {
-		time.Sleep(30 * time.Second)
-	}
-
-	log.Println("good jober")
+	time.Sleep(30 * time.Second)
 }

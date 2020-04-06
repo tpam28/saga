@@ -26,27 +26,38 @@ func (d direction) Is() bool {
 }
 
 type EventTransmitter struct {
-	t  Transmitter
-	id string
-	m  *Message
+	t Transmitter
+	m *Message
 	broker.Event
 }
 
+func (e *EventTransmitter) Retry() int {
+	return e.m.Retry
+}
+
+func (e *EventTransmitter) SetPayload(b []byte) {
+	e.m.Payload = b
+}
+
+func (e *EventTransmitter) Payload() []byte {
+	return e.m.Payload
+}
+
 func (e *EventTransmitter) ID() string {
-	return e.id
+	return e.m.ID
 }
 
-func (e *EventTransmitter) Approval() error {
-	return e.t.Approval(e.m)
+func (e *EventTransmitter) Approve() error {
+	return e.t.Approve(e.m)
 }
 
-func (e *EventTransmitter) Rejected() error {
-	return e.t.Rejected(e.m)
+func (e *EventTransmitter) Reject() error {
+	return e.t.Reject(e.m)
 }
 
 type Transmitter interface {
-	Approval(m *Message) error
-	Rejected(m *Message) error
+	Approve(m *Message) error
+	Reject(m *Message) error
 }
 
 type steps string
@@ -121,14 +132,14 @@ func (t VerifyCard) Is() bool {
 }
 
 func (t ConfirmTicket) Is() bool {
-	if t == StartConfirmTicket || t == ConfirmConfirmTicket {
+	if t == StartConfirmTicket || t == ConfirmConfirmTicket || t == FailedConfirmTicket {
 		return true
 	}
 	return false
 }
 
 func (t ConfirmOrder) Is() bool {
-	if t == StartConfirmOrder || t == ConfirmConfirmOrder {
+	if t == StartConfirmOrder || t == ConfirmConfirmOrder || t == FailedConfirmOrder {
 		return true
 	}
 	return false
@@ -158,34 +169,33 @@ type VerifyConsumerTransmitter struct {
 	MaxRetries int
 }
 
-func (t *VerifyConsumerTransmitter) Pending(m *Message) error {
-	m.Command = string(BeginVerifyVerifyConsumer)
-	m.StepName = "verify_consumer"
-	b, _ := json.Marshal(m)
-	body := &broker.Message{Body: b}
-	return t.b.Publish(orchestratorRoutingKey, body)
-}
-
-func (t *VerifyConsumerTransmitter) Approval(m *Message) error {
+func (t *VerifyConsumerTransmitter) Approve(m *Message) error {
 	m.Command = string(CheckedVerifyConsumer)
 	m.StepName = "verify_consumer"
+	m.Retry = 0
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
 
-func (t *VerifyConsumerTransmitter) Rejected(m *Message) error {
-
-	m.StepName = "verify_consumer"
+func (t *VerifyConsumerTransmitter) Reject(m *Message) error {
 
 	m.Command = string(FailedVerifyConsumer)
-
+	if m.Direction != Down {
+		m.Command = string(CheckedVerifyConsumer)
+	}
 	m.Direction = Down
+
+	m.StepName = "verify_consumer"
+	if m.Retry > t.MaxRetries {
+		return ErrToManyRetries
+	}
+
+	m.Retry++
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
-
 func NewVerifyConsumerTransmitter(b broker.Broker) *VerifyConsumerTransmitter {
 	return &VerifyConsumerTransmitter{b: b, MaxRetries: 10}
 }
@@ -204,7 +214,6 @@ func (r *VerifyConsumerReceiver) Pending(f func(*EventTransmitter) error) (broke
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -220,7 +229,6 @@ func (r *VerifyConsumerReceiver) Rejected(f func(*EventTransmitter) error) (brok
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -240,34 +248,33 @@ type CreateTicketTransmitter struct {
 	MaxRetries int
 }
 
-func (t *CreateTicketTransmitter) Pending(m *Message) error {
-	m.Command = string(BeginCheckCreateTicket)
-	m.StepName = "create_ticket"
-	b, _ := json.Marshal(m)
-	body := &broker.Message{Body: b}
-	return t.b.Publish(orchestratorRoutingKey, body)
-}
-
-func (t *CreateTicketTransmitter) Approval(m *Message) error {
+func (t *CreateTicketTransmitter) Approve(m *Message) error {
 	m.Command = string(VerifedCreateTicket)
 	m.StepName = "create_ticket"
+	m.Retry = 0
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
 
-func (t *CreateTicketTransmitter) Rejected(m *Message) error {
-
-	m.StepName = "create_ticket"
+func (t *CreateTicketTransmitter) Reject(m *Message) error {
 
 	m.Command = string(FailedCreateTicket)
-
+	if m.Direction != Down {
+		m.Command = string(VerifedCreateTicket)
+	}
 	m.Direction = Down
+
+	m.StepName = "create_ticket"
+	if m.Retry > t.MaxRetries {
+		return ErrToManyRetries
+	}
+
+	m.Retry++
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
-
 func NewCreateTicketTransmitter(b broker.Broker) *CreateTicketTransmitter {
 	return &CreateTicketTransmitter{b: b, MaxRetries: 10}
 }
@@ -286,7 +293,6 @@ func (r *CreateTicketReceiver) Pending(f func(*EventTransmitter) error) (broker.
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -302,7 +308,6 @@ func (r *CreateTicketReceiver) Rejected(f func(*EventTransmitter) error) (broker
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -322,34 +327,33 @@ type VerifyCardTransmitter struct {
 	MaxRetries int
 }
 
-func (t *VerifyCardTransmitter) Pending(m *Message) error {
-	m.Command = string(BeginVerifyVerifyCard)
-	m.StepName = "verify_card"
-	b, _ := json.Marshal(m)
-	body := &broker.Message{Body: b}
-	return t.b.Publish(orchestratorRoutingKey, body)
-}
-
-func (t *VerifyCardTransmitter) Approval(m *Message) error {
+func (t *VerifyCardTransmitter) Approve(m *Message) error {
 	m.Command = string(VerifedVerifyCard)
 	m.StepName = "verify_card"
+	m.Retry = 0
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
 
-func (t *VerifyCardTransmitter) Rejected(m *Message) error {
-
-	m.StepName = "verify_card"
+func (t *VerifyCardTransmitter) Reject(m *Message) error {
 
 	m.Command = string(FailedVerifyCard)
-
+	if m.Direction != Down {
+		m.Command = string(VerifedVerifyCard)
+	}
 	m.Direction = Down
+
+	m.StepName = "verify_card"
+	if m.Retry > t.MaxRetries {
+		return ErrToManyRetries
+	}
+
+	m.Retry++
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
-
 func NewVerifyCardTransmitter(b broker.Broker) *VerifyCardTransmitter {
 	return &VerifyCardTransmitter{b: b, MaxRetries: 10}
 }
@@ -368,7 +372,6 @@ func (r *VerifyCardReceiver) Pending(f func(*EventTransmitter) error) (broker.Su
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -384,7 +387,6 @@ func (r *VerifyCardReceiver) Rejected(f func(*EventTransmitter) error) (broker.S
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -404,35 +406,28 @@ type ConfirmTicketTransmitter struct {
 	MaxRetries int
 }
 
-func (t *ConfirmTicketTransmitter) Pending(m *Message) error {
-	m.Command = string(StartConfirmTicket)
-	m.StepName = "confirm_ticket"
-	b, _ := json.Marshal(m)
-	body := &broker.Message{Body: b}
-	return t.b.Publish(orchestratorRoutingKey, body)
-}
-
-func (t *ConfirmTicketTransmitter) Approval(m *Message) error {
+func (t *ConfirmTicketTransmitter) Approve(m *Message) error {
 	m.Command = string(ConfirmConfirmTicket)
 	m.StepName = "confirm_ticket"
+	m.Retry = 0
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
 
-func (t *ConfirmTicketTransmitter) Rejected(m *Message) error {
+func (t *ConfirmTicketTransmitter) Reject(m *Message) error {
 
 	m.Command = string(FailedConfirmTicket)
-
+	m.StepName = "confirm_ticket"
 	if m.Retry > t.MaxRetries {
 		return ErrToManyRetries
 	}
+
 	m.Retry++
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
-
 func NewConfirmTicketTransmitter(b broker.Broker) *ConfirmTicketTransmitter {
 	return &ConfirmTicketTransmitter{b: b, MaxRetries: 10}
 }
@@ -451,7 +446,6 @@ func (r *ConfirmTicketReceiver) Pending(f func(*EventTransmitter) error) (broker
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -467,7 +461,6 @@ func (r *ConfirmTicketReceiver) Rejected(f func(*EventTransmitter) error) (broke
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -487,35 +480,28 @@ type ConfirmOrderTransmitter struct {
 	MaxRetries int
 }
 
-func (t *ConfirmOrderTransmitter) Pending(m *Message) error {
-	m.Command = string(StartConfirmOrder)
-	m.StepName = "confirm_order"
-	b, _ := json.Marshal(m)
-	body := &broker.Message{Body: b}
-	return t.b.Publish(orchestratorRoutingKey, body)
-}
-
-func (t *ConfirmOrderTransmitter) Approval(m *Message) error {
+func (t *ConfirmOrderTransmitter) Approve(m *Message) error {
 	m.Command = string(ConfirmConfirmOrder)
 	m.StepName = "confirm_order"
+	m.Retry = 0
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
 
-func (t *ConfirmOrderTransmitter) Rejected(m *Message) error {
+func (t *ConfirmOrderTransmitter) Reject(m *Message) error {
 
 	m.Command = string(FailedConfirmOrder)
-
+	m.StepName = "confirm_order"
 	if m.Retry > t.MaxRetries {
 		return ErrToManyRetries
 	}
+
 	m.Retry++
 	b, _ := json.Marshal(m)
 	body := &broker.Message{Body: b}
 	return t.b.Publish(orchestratorRoutingKey, body)
 }
-
 func NewConfirmOrderTransmitter(b broker.Broker) *ConfirmOrderTransmitter {
 	return &ConfirmOrderTransmitter{b: b, MaxRetries: 10}
 }
@@ -534,7 +520,6 @@ func (r *ConfirmOrderReceiver) Pending(f func(*EventTransmitter) error) (broker.
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -550,7 +535,6 @@ func (r *ConfirmOrderReceiver) Rejected(f func(*EventTransmitter) error) (broker
 		}
 		return f(&EventTransmitter{
 			t:     r.t,
-			id:    m.ID,
 			m:     &m,
 			Event: event,
 		})
@@ -608,30 +592,22 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 	switch direction {
 	case Up:
 		switch typeOf {
-		case BeginVerifyVerifyConsumer:
-			o.log.Log(logger.WarnLevel, BeginVerifyVerifyConsumer+" is not defined for orchestrator")
-			return nil
 		case CheckedVerifyConsumer:
 			return o.b.Publish("create_ticket.pending", m)
+		default:
+			panic(typeOf)
+		}
+	case Down:
 
+		switch typeOf {
+		case CheckedVerifyConsumer:
+			return nil
 		case FailedVerifyConsumer:
 			return o.b.Publish("verify_consumer.rejected", m)
 		default:
 			panic(typeOf)
 		}
-	case Down:
-		switch typeOf {
-		case BeginVerifyVerifyConsumer:
-			o.log.Log(logger.WarnLevel, BeginVerifyVerifyConsumer+" is not defined for orchestrator")
-			return nil
-		case CheckedVerifyConsumer:
-			return nil
-		case FailedVerifyConsumer:
-			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")
-			return errors.New("tx accident")
-		default:
-			panic(typeOf)
-		}
+
 	}
 
 	return nil
@@ -645,30 +621,15 @@ func (o *Orchestrator) create_ticketRoute(m *broker.Message, typeOf CreateTicket
 	switch direction {
 	case Up:
 		switch typeOf {
-		case BeginCheckCreateTicket:
-			o.log.Log(logger.WarnLevel, BeginCheckCreateTicket+" is not defined for orchestrator")
-			return nil
 		case VerifedCreateTicket:
 			return o.b.Publish("verify_card.pending", m)
-
-		case FailedCreateTicket:
-			return o.b.Publish("create_ticket.rejected", m)
 		default:
 			panic(typeOf)
 		}
 	case Down:
-		switch typeOf {
-		case BeginCheckCreateTicket:
-			o.log.Log(logger.WarnLevel, BeginCheckCreateTicket+" is not defined for orchestrator")
-			return nil
-		case VerifedCreateTicket:
-			return o.b.Publish("verify_consumer.pending", m)
-		case FailedCreateTicket:
-			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")
-			return errors.New("tx accident")
-		default:
-			panic(typeOf)
-		}
+
+		return o.b.Publish("verify_consumer.rejected", m)
+
 	}
 
 	return nil
@@ -682,30 +643,15 @@ func (o *Orchestrator) verify_cardRoute(m *broker.Message, typeOf VerifyCard, di
 	switch direction {
 	case Up:
 		switch typeOf {
-		case BeginVerifyVerifyCard:
-			o.log.Log(logger.WarnLevel, BeginVerifyVerifyCard+" is not defined for orchestrator")
-			return nil
 		case VerifedVerifyCard:
 			return o.b.Publish("confirm_ticket.pending", m)
-
-		case FailedVerifyCard:
-			return o.b.Publish("verify_card.rejected", m)
 		default:
 			panic(typeOf)
 		}
 	case Down:
-		switch typeOf {
-		case BeginVerifyVerifyCard:
-			o.log.Log(logger.WarnLevel, BeginVerifyVerifyCard+" is not defined for orchestrator")
-			return nil
-		case VerifedVerifyCard:
-			return o.b.Publish("create_ticket.pending", m)
-		case FailedVerifyCard:
-			o.log.Log(logger.ErrorLevel, "it's happened rejecting transaction which rejected")
-			return errors.New("tx accident")
-		default:
-			panic(typeOf)
-		}
+
+		return o.b.Publish("create_ticket.rejected", m)
+
 	}
 
 	return nil
@@ -717,12 +663,10 @@ func (o *Orchestrator) confirm_ticketRoute(m *broker.Message, typeOf ConfirmTick
 	}
 
 	switch typeOf {
-	case StartConfirmTicket:
-		o.log.Log(logger.WarnLevel, StartConfirmTicket+" is not defined for orchestrator")
-		return nil
 	case ConfirmConfirmTicket:
 		return o.b.Publish("confirm_order.pending", m)
-
+	case FailedConfirmTicket:
+		return o.b.Publish("confirm_ticket.rejected", m)
 	default:
 		panic(typeOf)
 	}
@@ -736,12 +680,10 @@ func (o *Orchestrator) confirm_orderRoute(m *broker.Message, typeOf ConfirmOrder
 	}
 
 	switch typeOf {
-	case StartConfirmOrder:
-		o.log.Log(logger.WarnLevel, StartConfirmOrder+" is not defined for orchestrator")
-		return nil
 	case ConfirmConfirmOrder:
 		return nil
-
+	case FailedConfirmOrder:
+		return o.b.Publish("confirm_order.rejected", m)
 	default:
 		panic(typeOf)
 	}
