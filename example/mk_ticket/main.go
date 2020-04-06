@@ -29,9 +29,14 @@ func main() {
 		panic(err)
 	}
 
-	reciver := lib.NewConfirmTicketReceiver(b)
+	reciver := lib.NewCreateTicketReceiver(b)
 	_, err = reciver.Rejected(func(event *lib.EventTransmitter) error {
-		log.Println("confirm_ticket got rejected event :", event.ID())
+		err = event.Approve()
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println("mk_ticket got rejected event",event.ID())
+
 
 		return nil
 	})
@@ -39,15 +44,15 @@ func main() {
 		panic(err)
 	}
 	_, err = reciver.Pending(func(event *lib.EventTransmitter) error {
-		log.Println("confirm_ticket got pending event :", event.ID())
-		if event.ID() == "2" {
-			err = event.Rejected()
-			if err != nil {
-				log.Println(err)
-			}
-			return nil
-		}
-		err = event.Approval()
+		log.Println("mk_ticket got pending  event :",event.ID())
+		//if event.ID() == "5" {
+		//	err = event.Reject()
+		//	if err != nil {
+		//		log.Println(err)
+		//	}
+		//	return nil
+		//}
+		err = event.Approve()
 		if err != nil {
 			log.Println(err)
 		}
@@ -57,9 +62,5 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i < 5; i++ {
-		time.Sleep(30 * time.Second)
-	}
-
-	log.Println("good jober")
+	time.Sleep(30 * time.Second)
 }

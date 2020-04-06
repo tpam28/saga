@@ -32,7 +32,7 @@ func main() {
 	reciver := lib.NewVerifyCardReceiver(b)
 	_, err = reciver.Rejected(func(event *lib.EventTransmitter) error {
 		log.Println("vf card got rejected event :",event.ID())
-		err := event.Approval()
+		err := event.Approve()
 		if err != nil{
 			log.Println(err)
 		}
@@ -44,14 +44,14 @@ func main() {
 
 	_, err = reciver.Pending(func(event *lib.EventTransmitter) error {
 		log.Println("vf_card got pending event :",event.ID())
-		if event.ID() == "3" {
-			err = event.Rejected()
+		if event.ID() == "2" || event.ID() == "4" {
+			err = event.Reject()
 			if err != nil {
 				log.Println(err)
 			}
 			return nil
 		}
-		err = event.Approval()
+		err = event.Approve()
 		if err != nil {
 			log.Println(err)
 		}
@@ -62,9 +62,5 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i < 6; i++ {
-		time.Sleep(30 * time.Second)
-	}
-
-	log.Println("good jober")
+	time.Sleep(30 * time.Second)
 }

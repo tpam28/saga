@@ -19,7 +19,10 @@ it have two parameters intput and output.
 
 
 ### Example ###
-Use make test-run task=1
+1. Use make gen for regenerate example code.
+2. Use make example-build for rebuild example applications.
+3. Use  make example-run TASK=1.
+Every message in loop also goes to orchestrator then come back.  
 ![First task](first_task.png)
 ```mermaid
 sequenceDiagram
@@ -35,6 +38,37 @@ sequenceDiagram
   Orchestrator ->> Confirm order:Pending
   Confirm order -->> Orchestrator:Accepted
 ```
+
+![Second task](second_task.png)
+```mermaid
+sequenceDiagram
+  autonumber
+  Title: Second task
+  Verify consumer ->> Orchestrator:Accepted
+  Orchestrator ->> Create ticket:Pending
+  Create ticket -->> Orchestrator:Rejected
+  Orchestrator ->> Verify consumer:Rejected
+  Verify consumer -->> Orchestrator:Accepted
+```
+![Third task](third_task.png)
+```mermaid
+sequenceDiagram
+  autonumber
+  Title: Third task
+  Verify consumer ->> Orchestrator:Accepted
+  Orchestrator ->> Create ticket:Pending
+  Create ticket -->> Orchestrator:Accepted
+  Orchestrator ->> Verify card:Pending
+  Verify card -->> Orchestrator:Accepted
+  Orchestrator ->> Confirm ticket:Pending
+  loop Retry x3
+  Confirm ticket ->> Confirm ticket:Rejected
+  end
+  Confirm ticket -->> Orchestrator:Accepted
+  Orchestrator ->> Confirm order:Pending
+  Confirm order -->> Orchestrator:Accepted
+```
+
 ##### What's happened when service rejected tx which was rejected? #####
 
 ##### What's happened when retriable tx is rejected? #####

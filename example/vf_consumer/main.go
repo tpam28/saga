@@ -33,7 +33,18 @@ func main() {
 	}
 	reciever := lib.NewVerifyConsumerReceiver(b)
 	reciever.Rejected(func(event *lib.EventTransmitter) error {
-		err := event.Approval()
+		if config.GetInt("task") == 4 && event.Retry() < 3 {
+			log.Println("vf consumer got rejected event", event.ID(), "attention:", event.Retry())
+
+			err := event.Reject()
+			if err != nil {
+				log.Println(err)
+			}
+			return nil
+		}
+		log.Println("vf consumer got rejected event", event.ID())
+
+		err := event.Approve()
 		if err != nil {
 			log.Println(err)
 		}
@@ -42,10 +53,11 @@ func main() {
 
 	transmitter := lib.NewVerifyConsumerTransmitter(b)
 	time.Sleep(5 * time.Second)
-	err = transmitter.Approval(lib.NewMessage(fmt.Sprint(viper.GetString("task"))))
+	err = transmitter.Approve(lib.NewMessage(fmt.Sprint(viper.GetString("task"))))
+	fmt.Println("vf consumer approval:", fmt.Sprint(viper.GetString("task")))
 	if err != nil {
 		log.Println(err)
 	}
+	time.Sleep(30 * time.Second)
 
-	fmt.Println("vf consumer approval:", fmt.Sprint(viper.GetString("task")))
 }

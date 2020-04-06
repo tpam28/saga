@@ -16,11 +16,11 @@ func main() {
 	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	config.AutomaticEnv()
 
-	b:= rabbitmq.NewBroker(func(options *broker.Options) {
-		options.Addrs=append(options.Addrs, config.GetString("rabbitmq.dsn"))
+	b := rabbitmq.NewBroker(func(options *broker.Options) {
+		options.Addrs = append(options.Addrs, config.GetString("rabbitmq.dsn"))
 	})
 	err := b.Connect()
-	if err !=nil{
+	if err != nil {
 		panic(err)
 	}
 	log.Println(b.Address())
@@ -29,8 +29,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Println("good job")
-	for i:=0; i<5;i++{
-		time.Sleep(30 * time.Second)
-	}
+	time.Sleep(30 * time.Second)
 }
