@@ -24,26 +24,37 @@ func (d direction)Is() bool{
 
 type EventTransmitter struct{
     t Transmitter
-    id string
     m *Message
     broker.Event
 }
 
+func (e *EventTransmitter)Retry() int{
+    return e.m.Retry
+}
+
+func (e *EventTransmitter)SetPayload(b []byte){
+    e.m.Payload = b
+}
+
+func (e *EventTransmitter)Payload() []byte {
+    return e.m.Payload
+}
+
 func (e *EventTransmitter)ID()string{
-    return e.id
+    return e.m.ID
 }
 
-func (e *EventTransmitter)Approval() error {
-    return e.t.Approval(e.m)
+func (e *EventTransmitter)Approve() error {
+    return e.t.Approve(e.m)
 }
 
-func (e *EventTransmitter)Rejected() error {
-    return e.t.Rejected(e.m)
+func (e *EventTransmitter)Reject() error {
+    return e.t.Reject(e.m)
 }
 
 type Transmitter interface{
-    Approval(m *Message) error
-    Rejected(m *Message) error
+    Approve(m *Message) error
+    Reject(m *Message) error
 }
 
 
@@ -65,7 +76,7 @@ const(
 
 {{range .}}
 func (t {{.Name  | camelcase}}) Is () bool{
-    if t == {{.Sl.Pending | camelcase}}{{.Name  | camelcase}} || t == {{.Sl.Approval | camelcase}}{{.Name  | camelcase}} {{if ne .Sl.Rejected ""}} || t == {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}{{end}}{
+    if t == {{.Sl.Pending | camelcase}}{{.Name  | camelcase}} || t == {{.Sl.Approval | camelcase}}{{.Name  | camelcase}} {{if ne .Sl.Rejected ""}} || t == {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}{{else}} || t == Failed{{.Name  | camelcase}}{{end}}{
         return true
     }
     return false
@@ -96,46 +107,35 @@ type {{.Name | camelcase}}Transmitter struct{
     b broker.Broker
     MaxRetries int
 }
-func (t *{{.Name | camelcase}}Transmitter)Pending(m *Message) error {
-    m.Command = string({{.Sl.Pending | camelcase}}{{.Name  | camelcase}})
-    m.StepName = "{{.Name}}"
-    b,_ :=json.Marshal(m)
-    body := &broker.Message{Body:b}
-    return t.b.Publish(orchestratorRoutingKey, body)
-}
 
-func (t *{{.Name | camelcase}}Transmitter)Approval(m *Message) error {
+func (t *{{.Name | camelcase}}Transmitter)Approve(m *Message) error {
     m.Command = string({{.Sl.Approval | camelcase}}{{.Name  | camelcase}})
     m.StepName = "{{.Name}}"
+    m.Retry = 0
     b,_ :=json.Marshal(m)
     body := &broker.Message{Body:b}
     return t.b.Publish(orchestratorRoutingKey,  body)
 }
 
-func (t *{{.Name | camelcase}}Transmitter)Rejected(m *Message) error {
+func (t *{{.Name | camelcase}}Transmitter)Reject(m *Message) error {
 {{if ne .T "retriable"}}
-    m.StepName = "{{.Name}}"
-    {{if notNil .Prev}}
-    m.Command = string({{.Prev.Sl.Rejected | camelcase}}{{.Name  | camelcase}})
-    {{else}}
-    m.Command = string({{.Next.Prev.Sl.Rejected | camelcase}}{{.Name  | camelcase}})
-    {{end}}
+    m.Command = string({{.Sl.Rejected | camelcase}}{{.Name  | camelcase}})
+    if m.Direction != Down{
+        m.Command = string({{.Sl.Approval | camelcase}}{{.Name  | camelcase}})
+    }
     m.Direction = Down
-    b,_ :=json.Marshal(m)
-    body := &broker.Message{Body:b}
-    return t.b.Publish(orchestratorRoutingKey, body)
 {{else}}
-    m.Command = string(Failed{{.Sl.Rejected | camelcase}}{{.Name  | camelcase}})
-
+    m.Command = string(Failed{{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}){{end}}
+    m.StepName = "{{.Name}}"
     if m.Retry>t.MaxRetries{
         return ErrToManyRetries
     }
+
     m.Retry++
     b,_ :=json.Marshal(m)
     body := &broker.Message{Body:b}
     return t.b.Publish(orchestratorRoutingKey, body)
-{{end}}}
-
+}
 func New{{.Name | camelcase}}Transmitter(b broker.Broker) *{{.Name | camelcase}}Transmitter{
     return &{{.Name | camelcase}}Transmitter{b:b, MaxRetries:10}
 }
@@ -154,7 +154,6 @@ func (r *{{.Name | camelcase}}Receiver) Pending(f func(*EventTransmitter) error)
         }
         return f(&EventTransmitter{
             t: r.t,
-            id:m.ID,
             m: &m,
             Event: event,
         })
@@ -170,7 +169,6 @@ func (r *{{.Name | camelcase}}Receiver) Rejected(f func(*EventTransmitter)error)
         }
         return f(&EventTransmitter{
             t: r.t,
-            id:m.ID,
             m: &m,
             Event: event,
         })
@@ -222,41 +220,27 @@ func (o *Orchestrator){{.Name}}Route(m *broker.Message, typeOf {{.Name  | camelc
     switch direction{
         case Up:
             switch typeOf{
-                case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
-                    o.log.Log(logger.WarnLevel,{{.Sl.Pending | camelcase}}{{.Name  | camelcase}}+" is not defined for orchestrator")
-                    return nil
                 case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
                 {{if .Next}}    return o.b.Publish("{{.Next.Name}}.pending", m){{else}}    return nil{{end}}
-                {{if ne .Sl.Rejected ""}}
-                case {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}:
-                    return o.b.Publish("{{.Name}}.rejected", m){{end}}
                 default:
                     panic(typeOf)
             }
         case Down:
             switch typeOf{
-                case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
-                    o.log.Log(logger.WarnLevel,{{.Sl.Pending | camelcase}}{{.Name  | camelcase}}+" is not defined for orchestrator")
-                    return nil
                 case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
-                {{if .Prev}}    return o.b.Publish("{{.Prev.Name}}.pending", m){{else}}    return nil{{end}}
-                case {{if ne .Sl.Rejected ""}}{{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}{{else}}errRejected{{.Name  | camelcase}}{{end}}:
-                    o.log.Log(logger.ErrorLevel,"it's happened rejecting transaction which rejected")
-                    return errors.New("tx accident")
+                {{if .Prev}}    return o.b.Publish("{{.Prev.Name}}.rejected", m){{else}}    return nil{{end}}
+                case {{if ne .Sl.Rejected ""}}{{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}{{else}}Failed{{.Name  | camelcase}}{{end}}:
+                    return o.b.Publish("{{.Name}}.rejected", m)
                 default:
                     panic(typeOf)
             }
     }
     {{else}}
         switch typeOf{
-        case {{.Sl.Pending | camelcase}}{{.Name  | camelcase}}:
-        o.log.Log(logger.WarnLevel,{{.Sl.Pending | camelcase}}{{.Name  | camelcase}}+" is not defined for orchestrator")
-        return nil
         case {{.Sl.Approval | camelcase}}{{.Name  | camelcase}}:
         {{if .Next}}    return o.b.Publish("{{.Next.Name}}.pending", m){{else}}    return nil{{end}}
-        {{if ne .Sl.Rejected ""}}
-            case {{.Sl.Rejected | camelcase}}{{.Name  | camelcase}}:
-            return o.b.Publish("{{.Name}}.rejected", m){{end}}
+            case Failed{{.Name  | camelcase}}:
+            return o.b.Publish("{{.Name}}.rejected", m)
         default:
         panic(typeOf)
         }
