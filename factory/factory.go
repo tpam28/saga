@@ -2,14 +2,13 @@ package factory
 
 import (
 	"bytes"
+	"github.com/Masterminds/sprig"
+	"github.com/tpam28/saga/domain"
 	"go/format"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"os"
-
-
-	"github.com/Masterminds/sprig"
-	"github.com/tpam28/saga/domain"
 )
 
 type Factory struct {
@@ -18,14 +17,14 @@ type Factory struct {
 	PackageName string
 }
 
-var notNil = template.FuncMap{
-	"notNil": func(i *domain.Step) bool { return i != nil },
+var isNil = template.FuncMap{
+	"isNil": func(i *domain.Step) bool { return i == nil },
 }
 
 func (f *Factory) Do(list domain.StepList) {
 	t := template.New("const.tpl")
 	t = t.Funcs(sprig.FuncMap())
-	t = t.Funcs(notNil)
+	t = t.Funcs(isNil)
 	t, err := t.ParseFiles("factory/const.tpl")
 	if err != nil {
 		panic(err)
@@ -40,8 +39,9 @@ func (f *Factory) Do(list domain.StepList) {
 	}
 
 	err = os.Remove(f.PathFile)
+
 	if err != nil {
-		panic("remove file failed with err: " + err.Error())
+		log.Println("remove file failed with err: " + err.Error())
 	}
 
 	b, err := format.Source(buf.Bytes())
@@ -50,7 +50,7 @@ func (f *Factory) Do(list domain.StepList) {
 	}
 
 	err = ioutil.WriteFile(f.PathFile, b, 0755)
-	if err != nil {
+	if err != nil{
 		panic(err)
 	}
 

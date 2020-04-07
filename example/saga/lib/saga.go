@@ -598,7 +598,6 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 			panic(typeOf)
 		}
 	case Down:
-
 		switch typeOf {
 		case CheckedVerifyConsumer:
 			return nil
@@ -607,7 +606,6 @@ func (o *Orchestrator) verify_consumerRoute(m *broker.Message, typeOf VerifyCons
 		default:
 			panic(typeOf)
 		}
-
 	}
 
 	return nil
@@ -627,9 +625,14 @@ func (o *Orchestrator) create_ticketRoute(m *broker.Message, typeOf CreateTicket
 			panic(typeOf)
 		}
 	case Down:
-
-		return o.b.Publish("verify_consumer.rejected", m)
-
+		switch typeOf {
+		case VerifedCreateTicket:
+			return o.b.Publish("verify_consumer.rejected", m)
+		case FailedCreateTicket:
+			return o.b.Publish("create_ticket.rejected", m)
+		default:
+			panic(typeOf)
+		}
 	}
 
 	return nil
@@ -649,9 +652,14 @@ func (o *Orchestrator) verify_cardRoute(m *broker.Message, typeOf VerifyCard, di
 			panic(typeOf)
 		}
 	case Down:
-
-		return o.b.Publish("create_ticket.rejected", m)
-
+		switch typeOf {
+		case VerifedVerifyCard:
+			return o.b.Publish("create_ticket.rejected", m)
+		case FailedVerifyCard:
+			return o.b.Publish("verify_card.rejected", m)
+		default:
+			panic(typeOf)
+		}
 	}
 
 	return nil

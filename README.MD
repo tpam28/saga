@@ -1,10 +1,12 @@
 ## About it ##
-<b>Saga</b> is a codegenerator for a saga orchestrator pattern. This use an yaml format for a config. Look at the example in example/config.
+<b>Saga</b> is a codegenerator for a saga orchestrator pattern.
+ I read this pattern in Microservices patterns book by Kris Richardson and decided writing useful tool for generation distributed transaction.   
 
 ### Config ###
+This use an yaml format for a config. Look at the example in example/config.
 A config describe a finite state machine of your transaction.
 The config musts contain a milestone which contains states of the transaction.
-Any state musts contain state statement.
+Any step musts contain state statement.
 which of that may be one of three types:
 1. Compensatable 
 2. Pivot
@@ -68,7 +70,17 @@ sequenceDiagram
   Orchestrator ->> Confirm order:Pending
   Confirm order -->> Orchestrator:Accepted
 ```
-
-##### What's happened when service rejected tx which was rejected? #####
-
-##### What's happened when retriable tx is rejected? #####
+![Fourth task](fourth_task.png)
+```mermaid
+sequenceDiagram
+  autonumber
+  Title: Fourth task
+  Verify consumer ->> Orchestrator:Accepted
+  Orchestrator ->> Create ticket:Pending
+  Create ticket -->> Orchestrator:Rejected
+  Orchestrator ->> Verify consumer:Rejected
+  loop Retry x3
+  Verify consumer ->> Verify consumer:Rejected
+  end
+  Verify consumer -->> Orchestrator:Accepted
+```
