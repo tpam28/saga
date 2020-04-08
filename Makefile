@@ -6,6 +6,7 @@ gen:
 
 
 example-build:
+	$(shell mkdir -p example/_build)
 	$(shell cd example/saga ; go build -o ../../example/_build/saga)
 	$(shell cd example/vf_consumer ; go build -o ../../example/_build/vf_consumer)
 	$(shell cd  example/mk_ticket ; go build -o ../../example/_build/mk_ticket)
