@@ -24,6 +24,8 @@ it have two parameters intput and output.
 1. Use make gen for regenerate example code.
 2. Use make example-build for rebuild example applications.
 3. Use  make example-run TASK=1.
+<details>
+  <summary>Example</summary>
 Every message in loop also goes to orchestrator then come back.  
 ![First task](first_task.png)
 ```mermaid
@@ -84,3 +86,4 @@ sequenceDiagram
   end
   Verify consumer -->> Orchestrator:Accepted
 ```
+</details>
