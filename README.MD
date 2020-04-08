@@ -24,9 +24,10 @@ it have two parameters intput and output.
 1. Use make gen for regenerate example code.
 2. Use make example-build for rebuild example applications.
 3. Use  make example-run TASK=1.
-<details>
-  <summary>Example</summary>
+
 Every message in loop also goes to orchestrator then come back.  
+<details>
+  <summary>make example-run TASK=1</summary>
 
 ![First task](first_task.png)
  
@@ -45,7 +46,13 @@ sequenceDiagram
   Confirm order -->> Orchestrator:Accepted
 ```
 
+</details>
+
+<details>
+  <summary>make example-run TASK=2</summary>
+
 ![Second task](second_task.png)
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -56,7 +63,14 @@ sequenceDiagram
   Orchestrator ->> Verify consumer:Rejected
   Verify consumer -->> Orchestrator:Accepted
 ```
+
+</details>
+
+<details>
+  <summary>make example-run TASK=3</summary>
+
 ![Third task](third_task.png)
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -74,7 +88,15 @@ sequenceDiagram
   Orchestrator ->> Confirm order:Pending
   Confirm order -->> Orchestrator:Accepted
 ```
+
+</details>
+
+<details>
+  <summary>make example-run TASK=4</summary>
+
+
 ![Fourth task](fourth_task.png)
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -88,4 +110,5 @@ sequenceDiagram
   end
   Verify consumer -->> Orchestrator:Accepted
 ```
+
 </details>
