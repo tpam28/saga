@@ -25,7 +25,6 @@ it have two parameters intput and output.
 2. Use make example-build for rebuild example applications.
 3. Use  make example-run TASK=1.
 
-Every message in loop also goes to orchestrator then come back.  
 <details>
   <summary>make example-run TASK=1</summary>
 
@@ -112,3 +111,5 @@ sequenceDiagram
 ```
 
 </details>
+
+Every message in loop also goes to orchestrator then come back.  
