@@ -27,8 +27,6 @@ it have two parameters intput and output.
 
 <details>
   <summary>make example-run TASK=1</summary>
-
-![First task](first_task.png)
  
 ```mermaid
 sequenceDiagram
@@ -47,10 +45,12 @@ sequenceDiagram
 
 </details>
 
+![First task](first_task.png)
+
+
 <details>
   <summary>make example-run TASK=2</summary>
 
-![Second task](second_task.png)
 
 ```mermaid
 sequenceDiagram
@@ -65,10 +65,12 @@ sequenceDiagram
 
 </details>
 
+![Second task](second_task.png)
+
+
 <details>
   <summary>make example-run TASK=3</summary>
 
-![Third task](third_task.png)
 
 ```mermaid
 sequenceDiagram
@@ -90,11 +92,13 @@ sequenceDiagram
 
 </details>
 
+![Third task](third_task.png)
+
+
 <details>
   <summary>make example-run TASK=4</summary>
 
 
-![Fourth task](fourth_task.png)
 
 ```mermaid
 sequenceDiagram
@@ -111,5 +115,8 @@ sequenceDiagram
 ```
 
 </details>
+
+![Fourth task](fourth_task.png)
+
 
 Every message in loop also goes to orchestrator then come back.  
